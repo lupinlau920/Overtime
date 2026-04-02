@@ -5,469 +5,467 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>員工補鐘管理</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google API Client Libraries -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://apis.google.com/js/api.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f1f5f9; color: #334155; }
-        .card { background: white; border-radius: 16px; box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05); border: 1px solid rgba(226, 232, 240, 0.8); }
-        .tab-active { background-color: #3b82f6; color: white; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3); }
-        .input-group { @apply flex flex-col gap-1.5; }
-        label { @apply text-xs font-bold text-slate-500 uppercase tracking-widest ml-1; }
-        select, input { @apply p-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 bg-white transition-all text-slate-700; }
-        .btn-primary { @apply bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md active:scale-95 disabled:opacity-50; }
-        .btn-success { @apply bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-md active:scale-95; }
-        .btn-outline { @apply border border-slate-200 text-slate-600 bg-white px-4 py-3 rounded-xl hover:bg-slate-50 transition-all active:scale-95 shadow-sm; }
-        .overlay { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px); }
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .card { background: white; border-radius: 24px; box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0; }
+        .tab-active { background-color: #1d4ed8; color: white; box-shadow: 0 10px 15px -3px rgba(29, 78, 216, 0.3); }
         
-        .sync-status { @apply flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full transition-all; }
-        .status-online { @apply bg-emerald-100 text-emerald-700 border border-emerald-200; }
-        .status-offline { @apply bg-slate-100 text-slate-500 border border-slate-200; }
-        .status-syncing { @apply bg-blue-100 text-blue-700 border border-blue-200 animate-pulse; }
+        .admin-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); overflow: hidden; }
+
+        /* 輸入框強化 */
+        .input-enhanced {
+            @apply p-4 border-2 border-slate-300 rounded-2xl outline-none transition-all text-slate-900 bg-white shadow-sm font-bold;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 1rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 3rem;
+        }
+        .input-enhanced:focus { @apply border-blue-600 ring-4 ring-blue-500/10; }
+
+        /* 強化的組別色彩系統 */
+        .rank-apn-theme { --rank-color: #2563eb; --rank-bg: #eff6ff; } /* 鮮藍 */
+        .rank-rn-theme { --rank-color: #8b5cf6; --rank-bg: #f5f3ff; }  /* 紫色 */
+        .rank-pca-theme { --rank-color: #059669; --rank-bg: #ecfdf5; } /* 翠綠 */
+        .rank-ea-theme { --rank-color: #d946ef; --rank-bg: #fdf4ff; }  /* 粉紫 */
+
+        .rank-card-header {
+            background-color: var(--rank-color);
+            color: white;
+            padding: 1rem 1.5rem;
+            font-weight: 900;
+            font-size: 0.875rem;
+            letter-spacing: 0.1em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .rank-card-body { border-top: 4px solid var(--rank-color); }
+        
+        .dot-indicator { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background-color: var(--rank-color); }
+
+        .btn-primary { @apply bg-blue-600 text-white px-6 py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg active:scale-95; }
+        .overlay { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); }
+        
+        /* 紀錄卡片樣式 */
+        .record-card-ot { border-left: 8px solid #2563eb; background-color: #ffffff; }
+        .record-card-taken { border-left: 8px solid #10b981; background-color: #ffffff; }
+
+        label { color: #64748b !important; font-weight: 800 !important; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
     <div id="app" class="max-w-6xl mx-auto">
-        <!-- 雲端狀態欄 -->
-        <div class="flex justify-end mb-4">
-            <div id="cloud-sync-container">
-                <button id="auth-btn" onclick="handleAuthClick()" class="btn-outline flex items-center gap-2 text-xs py-2">
-                    <svg class="w-4 h-4" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="m6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002l6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
-                    連接 Google Drive 雲端儲存
-                </button>
-                <div id="sync-status-display" class="sync-status status-offline hidden">
-                    <span class="w-2 h-2 rounded-full bg-current"></span>
-                    <span id="sync-text">未連接雲端</span>
+        <!-- 頂部導航 -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+            <div class="flex items-center gap-4">
+                <div class="bg-blue-600 p-3.5 rounded-2xl shadow-xl shadow-blue-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                 </div>
+                <div>
+                    <h1 class="text-3xl font-black text-slate-900 tracking-tighter">Staff <span class="text-blue-600">TimeTracker</span></h1>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">Personnel Management System</p>
+                </div>
+            </div>
+            <div class="flex bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200">
+                <button onclick="switchTab('main')" id="btn-main" class="px-10 py-2.5 rounded-xl font-bold transition-all text-sm tab-active">數據查詢</button>
+                <button onclick="handleSettingsClick()" id="btn-settings" class="px-10 py-2.5 rounded-xl font-bold transition-all text-sm text-slate-500 hover:text-blue-600">後台管理</button>
             </div>
         </div>
 
-        <header class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div>
-                <h1 class="text-4xl font-black text-slate-900 tracking-tight">補鐘 <span class="text-blue-600">管理</span></h1>
-                <p class="text-slate-500 mt-2 font-medium">數據已同步至 Google Drive，保障紀錄永不遺失</p>
-            </div>
-            <div class="flex bg-slate-200/50 backdrop-blur p-1.5 rounded-2xl border border-slate-200">
-                <button onclick="switchTab('main')" id="btn-main" class="px-8 py-2.5 rounded-xl font-bold transition-all tab-active">查詢與錄入</button>
-                <button onclick="handleSettingsClick()" id="btn-settings" class="px-8 py-2.5 rounded-xl font-bold transition-all text-slate-600 flex items-center gap-2 hover:bg-white/50">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    後台管理
-                </button>
-            </div>
-        </header>
-
         <!-- 主視圖 -->
         <div id="view-main" class="space-y-8 animate-in fade-in duration-500">
-            <!-- 數據看板區 -->
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-                <!-- Outstanding List 排行 -->
-                <div class="md:col-span-12 card p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white relative overflow-hidden border-none shadow-xl">
-                    <div class="absolute right-0 top-0 w-64 h-64 bg-blue-500/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
-                    <div class="relative z-10">
-                        <div class="flex items-center justify-between mb-6">
-                            <h3 class="font-black text-xl flex items-center gap-3">
-                                <span class="bg-red-500 text-white p-1 rounded-lg">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                </span>
-                                待補時數排名前三
-                            </h3>
-                        </div>
-                        <div id="outstanding-list" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
-                    </div>
+            <div class="card p-8 grid grid-cols-1 md:grid-cols-3 gap-8 items-end relative overflow-hidden border-2 border-slate-200">
+                <div class="absolute top-0 left-0 w-2 h-full bg-blue-600"></div>
+                <div class="flex flex-col gap-2">
+                    <label>1. 選擇組別 (Rank)</label>
+                    <select id="main-filter-role" onchange="filterEmployeeList()" class="input-enhanced w-full">
+                        <option value="">-- 全部組別 --</option>
+                        <option value="APN">🔵 APN</option>
+                        <option value="RN">🟣 RN</option>
+                        <option value="PCA">🟢 PCA</option>
+                        <option value="EA">💗 EA</option>
+                    </select>
                 </div>
-
-                <!-- 搜尋與選擇 -->
-                <div class="md:col-span-12 card p-8 grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-                    <div class="input-group">
-                        <label>職位類別</label>
-                        <select id="main-filter-role" onchange="filterEmployeeList()" class="w-full">
-                            <option value="">-- 全部類別 --</option>
-                            <option value="APN">APN (副顧問護師)</option>
-                            <option value="RN">RN (註冊護士)</option>
-                            <option value="職工">職工</option>
-                            <option value="文員">文員</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label>選擇員工</label>
-                        <select id="user-select" onchange="loadUserDashboard()" class="w-full">
-                            <option value="">-- 請先選擇類別 --</option>
-                        </select>
-                    </div>
-                    <button onclick="clearSearch()" class="btn-outline h-[50px] flex items-center justify-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        重置選擇
-                    </button>
+                <div class="flex flex-col gap-2">
+                    <label>2. 員工姓名</label>
+                    <select id="user-select" onchange="loadUserDashboard()" class="input-enhanced w-full">
+                        <option value="">-- 請先選擇組別 --</option>
+                    </select>
                 </div>
+                <button onclick="clearSearch()" class="h-[60px] bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all border border-slate-300">
+                    重置搜尋
+                </button>
             </div>
 
-            <!-- 個人紀錄明細 (選取後顯示) -->
-            <div id="employee-dashboard" class="hidden space-y-8 animate-in slide-in-from-bottom-10 duration-700">
-                <div class="flex flex-col md:flex-row gap-6">
-                    <div class="flex-1 card p-8 bg-blue-600 text-white flex flex-col justify-between border-none shadow-blue-200/50 shadow-2xl">
-                        <span class="text-blue-100 font-bold uppercase tracking-widest text-xs">當前結餘總計</span>
-                        <div class="mt-4">
-                            <h2 class="text-5xl font-black" id="stat-balance">0</h2>
-                            <p class="text-blue-200 mt-2 font-medium" id="stat-balance-hours">0 小時 0 分鐘</p>
+            <div id="employee-dashboard" class="hidden space-y-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="card p-8 bg-slate-900 text-white border-none shadow-2xl relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-4 opacity-10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                         </div>
+                        <p class="text-slate-400 text-xs font-black uppercase tracking-[0.2em]">當前可用結餘</p>
+                        <h2 class="text-5xl font-black mt-3 flex items-baseline gap-2" id="stat-balance">0<span class="text-xl">m</span></h2>
+                        <div class="mt-4 inline-flex items-center px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest border border-blue-500/30" id="stat-balance-hours">0H 0M</div>
                     </div>
-                    <div class="flex-none md:w-80 grid grid-rows-2 gap-4">
-                        <div class="card p-6 border-l-8 border-l-blue-400">
-                            <span class="text-slate-400 text-xs font-bold uppercase">總加班紀錄</span>
-                            <p class="text-2xl font-black text-slate-800 mt-1" id="stat-total-ot">0 <span class="text-sm font-normal text-slate-500">m</span></p>
-                        </div>
-                        <div class="card p-6 border-l-8 border-l-emerald-400">
-                            <span class="text-slate-400 text-xs font-bold uppercase">總補時紀錄</span>
-                            <p class="text-2xl font-black text-slate-800 mt-1" id="stat-total-taken">0 <span class="text-sm font-normal text-slate-500">m</span></p>
-                        </div>
+                    <div class="card p-8 border-l-8 border-l-blue-600 shadow-sm">
+                        <p class="text-slate-500 text-xs font-black uppercase tracking-[0.2em]">累積超時 (OT)</p>
+                        <h2 class="text-4xl font-black text-slate-900 mt-2" id="stat-total-ot">0 m</h2>
+                    </div>
+                    <div class="card p-8 border-l-8 border-l-emerald-500 shadow-sm">
+                        <p class="text-slate-500 text-xs font-black uppercase tracking-[0.2em]">累積已補 (Taken)</p>
+                        <h2 class="text-4xl font-black text-slate-900 mt-2" id="stat-total-taken">0 m</h2>
                     </div>
                 </div>
 
-                <div class="flex items-center justify-between px-2">
-                    <h3 class="text-2xl font-black text-slate-800"><span id="display-user-name" class="underline decoration-blue-500 decoration-4 underline-offset-8"></span> 的明細</h3>
-                    <button onclick="toggleRecordForm()" id="toggle-form-btn" class="btn-primary flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <div class="flex items-center justify-between bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
+                    <div class="flex items-center gap-4 pl-4">
+                        <div id="user-rank-dot" class="w-4 h-4 rounded-full"></div>
+                        <h3 class="text-2xl font-black text-slate-900" id="display-user-name">員工姓名</h3>
+                    </div>
+                    <button onclick="toggleRecordForm()" class="btn-primary py-3.5 px-8 text-sm flex items-center gap-2 shadow-blue-500/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
                         新增紀錄
                     </button>
                 </div>
 
-                <!-- 錄入表單 -->
-                <div id="record-form" class="hidden card overflow-hidden border-2 border-blue-100 shadow-2xl">
-                    <div class="bg-slate-50 px-8 py-4 border-b border-slate-100 flex justify-between items-center">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                            <span class="font-bold text-slate-700">正在錄入紀錄 - <span id="form-target-name"></span></span>
-                        </div>
-                        <button onclick="toggleRecordForm()" class="text-slate-400 hover:text-red-500 font-bold">ESC 關閉</button>
-                    </div>
-                    <div class="p-8 space-y-6">
+                <!-- 快速新增表單 -->
+                <div id="record-form" class="hidden card overflow-hidden border-2 border-blue-600 shadow-2xl animate-in zoom-in-95">
+                    <div class="p-8 space-y-6 bg-white">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="input-group">
-                                <label>1. 紀錄者姓名</label>
-                                <input type="text" id="recorder-name" placeholder="輸入您的姓名">
+                            <div class="flex flex-col gap-2">
+                                <label>核實人姓名</label>
+                                <input type="text" id="recorder-name" class="p-4 border-2 border-slate-200 rounded-2xl font-bold focus:border-blue-600 outline-none">
                             </div>
-                            <div class="input-group">
-                                <label>2. 紀錄者職級</label>
-                                <select id="recorder-role">
-                                    <option value="DOM">DOM</option><option value="WM">WM</option><option value="APN">APN</option><option value="RN">RN</option><option value="其他">其他</option>
+                            <div class="flex flex-col gap-2">
+                                <label>核實人 Rank</label>
+                                <select id="recorder-rank" class="p-4 border-2 border-slate-200 rounded-2xl font-bold focus:border-blue-600 outline-none">
+                                    <option value="APN">APN</option><option value="ANC">ANC</option><option value="WM">WM</option><option value="DOM">DOM</option>
                                 </select>
                             </div>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            <div class="input-group">
-                                <label>3. 性質</label>
-                                <select id="record-type" onchange="updateFormTheme()">
-                                    <option value="OT">超時工作 (OT +)</option>
-                                    <option value="TAKEN">申請補時 (Taken -)</option>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="flex flex-col gap-2">
+                                <label>性質</label>
+                                <select id="record-type" class="p-4 border-2 border-slate-200 rounded-2xl font-bold focus:border-blue-600 outline-none bg-slate-50">
+                                    <option value="OT">🔵 超時工作 (OT +)</option>
+                                    <option value="TAKEN">🟢 申請補時 (Taken -)</option>
                                 </select>
                             </div>
-                            <div class="input-group">
-                                <label>4. 發生日期</label>
-                                <input type="date" id="record-date">
+                            <div class="flex flex-col gap-2">
+                                <label>日期</label>
+                                <input type="date" id="record-date" class="p-4 border-2 border-slate-200 rounded-2xl font-bold focus:border-blue-600 outline-none">
                             </div>
-                            <div class="input-group">
-                                <label>5. 分鐘數</label>
-                                <input type="number" id="record-minutes" placeholder="分鐘">
-                                <div class="flex gap-1 mt-1">
-                                    <button onclick="quickMins(15)" class="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded hover:bg-slate-200 transition">15m</button>
-                                    <button onclick="quickMins(30)" class="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded hover:bg-slate-200 transition">30m</button>
-                                    <button onclick="quickMins(60)" class="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded hover:bg-slate-200 transition">1h</button>
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label>6. 備註原因</label>
-                                <input type="text" id="record-note" placeholder="備註">
+                            <div class="flex flex-col gap-2">
+                                <label>分鐘數</label>
+                                <input type="number" id="record-minutes" class="p-4 border-2 border-slate-200 rounded-2xl font-bold focus:border-blue-600 outline-none" placeholder="分鐘">
                             </div>
                         </div>
-                        <div class="flex justify-end pt-4">
-                            <button id="record-submit-btn" onclick="addRecord()" class="btn-primary w-full md:w-64">完成錄入並儲存</button>
+                        <div class="flex flex-col gap-2">
+                            <label>備註內容</label>
+                            <input type="text" id="record-note" class="p-4 border-2 border-slate-200 rounded-2xl font-bold focus:border-blue-600 outline-none" placeholder="請輸入補鐘原因或細節...">
+                        </div>
+                        <div class="flex gap-4">
+                            <button onclick="toggleRecordForm()" class="flex-1 py-5 rounded-2xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-all">取消</button>
+                            <button onclick="addRecord()" class="flex-[2] btn-primary py-5 text-lg">確認並儲存</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- 紀錄列表 -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div class="card overflow-hidden">
-                        <div class="p-5 border-b border-slate-100 bg-blue-50/30 font-black text-blue-700">加班紀錄明細 (OT)</div>
-                        <div class="max-h-[500px] overflow-y-auto">
-                            <table class="w-full text-left">
-                                <thead class="bg-slate-50 text-[11px] text-slate-400 uppercase tracking-widest sticky top-0">
-                                    <tr><th class="p-4">日期</th><th class="p-4">項目</th><th class="p-4">核實者</th><th class="p-4 text-right">分鐘</th></tr>
-                                </thead>
-                                <tbody id="table-ot" class="divide-y divide-slate-100 text-sm"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="card overflow-hidden">
-                        <div class="p-5 border-b border-slate-100 bg-emerald-50/30 font-black text-emerald-700">補時紀錄明細 (Taken)</div>
-                        <div class="max-h-[500px] overflow-y-auto">
-                            <table class="w-full text-left">
-                                <thead class="bg-slate-50 text-[11px] text-slate-400 uppercase tracking-widest sticky top-0">
-                                    <tr><th class="p-4">日期</th><th class="p-4">原因</th><th class="p-4">核實者</th><th class="p-4 text-right">分鐘</th></tr>
-                                </thead>
-                                <tbody id="table-taken" class="divide-y divide-slate-100 text-sm"></tbody>
-                            </table>
-                        </div>
-                    </div>
+                <!-- 統一流水列表 -->
+                <div id="unified-record-list" class="space-y-4"></div>
+            </div>
+
+            <div id="main-empty-state" class="card p-32 text-center border-dashed border-2 border-slate-300 bg-white">
+                <div class="bg-slate-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </div>
+                <p class="text-slate-400 font-bold text-lg">請選取組別與員工姓名以查閱數據</p>
             </div>
         </div>
 
-        <!-- 成員管理視圖 -->
-        <div id="view-settings" class="hidden space-y-8 animate-in slide-in-from-right-10 duration-500">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-900 p-8 rounded-3xl text-white shadow-2xl">
-                <div>
-                    <h2 class="text-3xl font-black">後台管理中心</h2>
-                    <p class="text-slate-400 text-sm mt-1">管理團隊成員與數據</p>
+        <!-- 後台管理 -->
+        <div id="view-settings" class="hidden space-y-8 animate-in slide-in-from-bottom-4">
+            <div class="admin-gradient p-12 rounded-[48px] text-white flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl relative">
+                <div class="relative z-10">
+                    <h2 class="text-4xl font-black tracking-tighter">系統管理中心</h2>
+                    <p class="text-blue-400 font-bold mt-2 uppercase tracking-widest text-[10px]">Administrative Control Panel</p>
                 </div>
-                <div class="flex flex-wrap gap-3">
-                    <button onclick="openChangePasswordModal()" class="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition-all font-bold text-sm">更改管理密碼</button>
-                    <button onclick="exportToExcel()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 transition-all font-bold text-sm">匯出所有數據</button>
-                    <button onclick="logoutAdmin()" class="px-5 py-2.5 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500 transition-all font-bold text-sm">登出並返回</button>
-                </div>
-            </div>
-
-            <div class="card p-8 bg-white">
-                <h3 class="text-lg font-black mb-6">註冊新員工</h3>
-                <div class="flex flex-col md:flex-row gap-4">
-                    <input type="text" id="new-member-name" placeholder="員工姓名" class="flex-1">
-                    <select id="new-member-role" class="md:w-64">
-                        <option value="APN">APN (副顧問護師)</option>
-                        <option value="RN">RN (註冊護士)</option>
-                        <option value="職工">職工</option>
-                        <option value="文員">文員</option>
-                    </select>
-                    <button onclick="addMember()" class="btn-primary px-12">確認加入</button>
+                <div class="flex flex-wrap gap-3 justify-center relative z-10">
+                    <button onclick="exportToExcel()" class="px-6 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/10 text-xs font-bold transition-all flex items-center gap-2">導出報表</button>
+                    <button onclick="backupData()" class="px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-xs font-bold transition-all">手動備份</button>
+                    <button onclick="document.getElementById('import-input').click()" class="px-6 py-3 rounded-2xl bg-amber-600 hover:bg-amber-500 text-xs font-bold transition-all">還原數據</button>
+                    <input type="file" id="import-input" class="hidden" accept=".json" onchange="importData(event)">
+                    <button onclick="logoutAdmin()" class="px-6 py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-xs font-bold transition-all">登出</button>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <!-- 分組列表 -->
-                <div class="card overflow-hidden"><div class="bg-blue-600 p-4 text-white flex justify-between"><span>APN 組</span><span id="group-ot-apn" class="text-xs font-bold">0m</span></div><div id="list-apn" class="p-4 space-y-2"></div></div>
-                <div class="card overflow-hidden"><div class="bg-indigo-600 p-4 text-white flex justify-between"><span>RN 組</span><span id="group-ot-rn" class="text-xs font-bold">0m</span></div><div id="list-rn" class="p-4 space-y-2"></div></div>
-                <div class="card overflow-hidden"><div class="bg-emerald-600 p-4 text-white flex justify-between"><span>職工組</span><span id="group-ot-staff" class="text-xs font-bold">0m</span></div><div id="list-staff" class="p-4 space-y-2"></div></div>
-                <div class="card overflow-hidden"><div class="bg-purple-600 p-4 text-white flex justify-between"><span>文員組</span><span id="group-ot-clerk" class="text-xs font-bold">0m</span></div><div id="list-clerk" class="p-4 space-y-2"></div></div>
+            <div class="card p-10 border-2 border-slate-200">
+                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-8">快速註冊新人員</h3>
+                <div class="flex flex-col md:flex-row gap-6">
+                    <div class="flex-1 flex flex-col gap-2">
+                        <label>員工全名</label>
+                        <input type="text" id="new-member-name" placeholder="例如: Chan Tai Man" class="p-5 border-2 border-slate-200 rounded-3xl font-bold focus:border-blue-600 outline-none">
+                    </div>
+                    <div class="md:w-64 flex flex-col gap-2">
+                        <label>所屬組別</label>
+                        <select id="new-member-role" class="p-5 border-2 border-slate-200 rounded-3xl font-bold focus:border-blue-600 outline-none bg-slate-50">
+                            <option value="APN">APN</option><option value="RN">RN</option><option value="PCA">PCA</option><option value="EA">EA</option>
+                        </select>
+                    </div>
+                    <button onclick="addMember()" class="btn-primary px-16 h-[68px] mt-auto">註冊人員</button>
+                </div>
+            </div>
+
+            <!-- 分組卡片展示 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- APN -->
+                <div class="card overflow-hidden rank-apn-theme rank-card-body">
+                    <div class="rank-card-header">
+                        <span>APN 組</span>
+                        <span id="group-ot-apn" class="bg-white/20 px-2 py-1 rounded text-[10px]">0m</span>
+                    </div>
+                    <div id="list-apn" class="p-4 space-y-2 min-h-[120px] bg-[var(--rank-bg)]"></div>
+                </div>
+                <!-- RN -->
+                <div class="card overflow-hidden rank-rn-theme rank-card-body">
+                    <div class="rank-card-header">
+                        <span>RN 組</span>
+                        <span id="group-ot-rn" class="bg-white/20 px-2 py-1 rounded text-[10px]">0m</span>
+                    </div>
+                    <div id="list-rn" class="p-4 space-y-2 min-h-[120px] bg-[var(--rank-bg)]"></div>
+                </div>
+                <!-- PCA -->
+                <div class="card overflow-hidden rank-pca-theme rank-card-body">
+                    <div class="rank-card-header">
+                        <span>PCA 組</span>
+                        <span id="group-ot-pca" class="bg-white/20 px-2 py-1 rounded text-[10px]">0m</span>
+                    </div>
+                    <div id="list-pca" class="p-4 space-y-2 min-h-[120px] bg-[var(--rank-bg)]"></div>
+                </div>
+                <!-- EA -->
+                <div class="card overflow-hidden rank-ea-theme rank-card-body">
+                    <div class="rank-card-header">
+                        <span>EA 組</span>
+                        <span id="group-ot-ea" class="bg-white/20 px-2 py-1 rounded text-[10px]">0m</span>
+                    </div>
+                    <div id="list-ea" class="p-4 space-y-2 min-h-[120px] bg-[var(--rank-bg)]"></div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- 驗證彈窗 -->
-    <div id="login-overlay" class="fixed inset-0 z-50 flex items-center justify-center hidden p-4 overlay" onclick="if(event.target===this) closeModal('login-overlay')">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-8" onclick="event.stopPropagation()">
-            <h2 class="text-2xl font-black text-center mb-6">管理員登入</h2>
-            <input type="password" id="admin-password" placeholder="••••" class="w-full text-center text-3xl font-black mb-6 border-b-2 border-slate-100 outline-none" onkeyup="if(event.key==='Enter') verifyAdmin()">
-            <div id="login-error" class="text-red-500 text-xs text-center hidden mb-4 font-bold">密碼不正確</div>
-            <div class="flex gap-3">
-                <button onclick="closeModal('login-overlay')" class="flex-1 py-4 font-bold text-slate-400 hover:text-slate-600">取消</button>
-                <button onclick="verifyAdmin()" class="flex-1 btn-primary">登入</button>
+    <div id="login-overlay" class="fixed inset-0 z-50 flex items-center justify-center hidden p-6 overlay" onclick="if(event.target===this) closeModal('login-overlay')">
+        <div class="bg-white rounded-[48px] shadow-2xl w-full max-w-sm p-14 text-center animate-in zoom-in-95" onclick="event.stopPropagation()">
+            <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-8">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
             </div>
+            <h2 class="text-2xl font-black mb-10 text-slate-900">後台管理授權</h2>
+            <input type="password" id="admin-password" placeholder="••••" class="w-full text-center text-4xl font-black border-b-4 border-slate-200 outline-none pb-4 focus:border-blue-600 tracking-[0.5em] mb-12 text-slate-900" onkeyup="if(event.key==='Enter') verifyAdmin()">
+            <button onclick="verifyAdmin()" class="btn-primary w-full py-6 text-xl shadow-blue-500/30">解除安全鎖定</button>
         </div>
     </div>
 
-    <!-- 更改密碼彈窗 -->
-    <div id="password-overlay" class="fixed inset-0 z-50 flex items-center justify-center hidden p-4 overlay" onclick="if(event.target===this) closeModal('password-overlay')">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-8" onclick="event.stopPropagation()">
-            <h2 class="text-xl font-black mb-6">更改管理密碼</h2>
-            <div class="space-y-4">
-                <div class="input-group"><label>新密碼</label><input type="password" id="new-pwd-1"></div>
-                <div class="input-group"><label>確認新密碼</label><input type="password" id="new-pwd-2"></div>
-            </div>
-            <div class="flex gap-3 mt-8">
-                <button onclick="closeModal('password-overlay')" class="flex-1 py-3 font-bold text-slate-400">取消</button>
-                <button onclick="changeAdminPassword()" class="flex-1 btn-primary py-3">確認修改</button>
-            </div>
-        </div>
+    <!-- 通知 -->
+    <div id="toast" class="fixed bottom-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-12 py-6 rounded-[32px] shadow-2xl transition-all translate-y-32 opacity-0 z-[100] font-black text-sm tracking-widest flex items-center gap-4">
+        <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+        <span id="toast-msg"></span>
     </div>
-
-    <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-4 rounded-2xl shadow-2xl transition-all translate-y-20 opacity-0 z-[100] font-bold text-sm"></div>
 
     <script>
-        // Google Drive 演示用 ID
-        const CLIENT_ID = '1073801267448-jks1l3p5m0v239m88as41bgeuicp1h6q.apps.googleusercontent.com';
-        const SCOPES = 'https://www.googleapis.com/auth/drive.file';
-
-        let tokenClient, gapiInited = false, googleFileId = null;
         let members = JSON.parse(localStorage.getItem('ot_members')) || [];
         let records = JSON.parse(localStorage.getItem('ot_records')) || [];
         let storedPassword = localStorage.getItem('ot_admin_pwd') || "8888";
         let isAdminLoggedIn = false;
 
-        window.onload = () => {
-            document.getElementById('record-date').valueAsDate = new Date();
-            document.getElementById('recorder-name').value = localStorage.getItem('ot_last_recorder_name') || '';
-            document.getElementById('recorder-role').value = localStorage.getItem('ot_last_recorder_role') || 'APN';
-            updateAllUI();
-            gapi.load('client', async () => {
-                await gapi.client.init({ discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'] });
-                gapiInited = true;
-            });
-            tokenClient = google.accounts.oauth2.initTokenClient({ client_id: CLIENT_ID, scope: SCOPES, callback: '' });
+        const rankColors = { 
+            'APN': '#2563eb', 
+            'RN': '#8b5cf6', 
+            'PCA': '#059669', 
+            'EA': '#d946ef' 
         };
 
-        function handleAuthClick() {
-            tokenClient.callback = async (resp) => {
-                if (resp.error) throw resp;
-                updateSyncStatus('syncing', '正在連接...');
-                await syncFromCloud();
-                document.getElementById('auth-btn').classList.add('hidden');
-                document.getElementById('sync-status-display').classList.remove('hidden');
-            };
-            tokenClient.requestAccessToken({ prompt: 'consent' });
-        }
-
-        async function syncFromCloud() {
-            try {
-                const response = await gapi.client.drive.files.list({ q: "name = 'app_data.json' and trashed = false", fields: 'files(id, name)' });
-                const files = response.result.files;
-                if (files && files.length > 0) {
-                    googleFileId = files[0].id;
-                    const content = await gapi.client.drive.files.get({ fileId: googleFileId, alt: 'media' });
-                    const data = content.result;
-                    if (data.members) {
-                        members = data.members;
-                        records = data.records;
-                        storedPassword = data.password || storedPassword;
-                        updateAllUI();
-                        updateSyncStatus('online', '雲端同步中');
-                    }
-                } else {
-                    await saveToCloud();
-                    updateSyncStatus('online', '雲端已連接');
-                }
-            } catch (err) { updateSyncStatus('offline', '同步失敗'); }
-        }
-
-        async function saveToCloud() {
-            if (!gapi.client.drive) return;
-            updateSyncStatus('syncing', '備份中...');
-            const content = JSON.stringify({ members, records, password: storedPassword });
-            try {
-                if (googleFileId) {
-                    await gapi.client.request({ path: '/upload/drive/v3/files/' + googleFileId, method: 'PATCH', params: { uploadType: 'media' }, body: content });
-                } else {
-                    const metadata = { name: 'app_data.json', mimeType: 'application/json' };
-                    const boundary = '---';
-                    const body = `--${boundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${content}\r\n--${boundary}--`;
-                    const res = await gapi.client.request({ path: '/upload/drive/v3/files', method: 'POST', params: { uploadType: 'multipart' }, headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body });
-                    googleFileId = res.result.id;
-                }
-                updateSyncStatus('online', '雲端同步中');
-            } catch (err) { updateSyncStatus('offline', '備份失敗'); }
-        }
-
-        function updateSyncStatus(type, text) {
-            const el = document.getElementById('sync-status-display'), txt = document.getElementById('sync-text');
-            el.className = 'sync-status ' + (type === 'online' ? 'status-online' : type === 'syncing' ? 'status-syncing' : 'status-offline');
-            txt.innerText = text;
-        }
-
-        function saveData() {
-            localStorage.setItem('ot_members', JSON.stringify(members));
-            localStorage.setItem('ot_records', JSON.stringify(records));
-            localStorage.setItem('ot_admin_pwd', storedPassword);
-            saveToCloud();
-        }
+        window.onload = () => {
+            document.getElementById('record-date').valueAsDate = new Date();
+            updateAllUI();
+        };
 
         function switchTab(tab) {
             const isMain = tab === 'main';
             document.getElementById('view-main').classList.toggle('hidden', !isMain);
             document.getElementById('view-settings').classList.toggle('hidden', isMain);
-            document.getElementById('btn-main').className = isMain ? 'px-8 py-2.5 rounded-xl font-bold tab-active' : 'px-8 py-2.5 rounded-xl font-bold text-slate-600';
-            document.getElementById('btn-settings').className = !isMain ? 'px-8 py-2.5 rounded-xl font-bold tab-active flex items-center gap-2' : 'px-8 py-2.5 rounded-xl font-bold text-slate-600 flex items-center gap-2';
+            document.getElementById('btn-main').className = isMain ? 'px-10 py-2.5 rounded-xl font-bold transition-all text-sm tab-active' : 'px-10 py-2.5 rounded-xl font-bold transition-all text-sm text-slate-500 hover:text-blue-600';
+            document.getElementById('btn-settings').className = !isMain ? 'px-10 py-2.5 rounded-xl font-bold transition-all text-sm tab-active' : 'px-10 py-2.5 rounded-xl font-bold transition-all text-sm text-slate-500 hover:text-blue-600';
             updateAllUI();
         }
 
         function filterEmployeeList() {
-            const role = document.getElementById('main-filter-role').value;
+            const role = document.getElementById('main-filter-role').value.replace(/[^A-Z]/g, '');
             const select = document.getElementById('user-select');
             document.getElementById('employee-dashboard').classList.add('hidden');
-            if (!role) { select.innerHTML = '<option value="">-- 請先選擇類別 --</option>'; return; }
+            document.getElementById('main-empty-state').classList.remove('hidden');
+            if (!role) { select.innerHTML = '<option value="">-- 先選取組別 --</option>'; return; }
             const filtered = members.filter(m => m.role === role).sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant'));
-            select.innerHTML = '<option value="">-- 選擇姓名 --</option>' + filtered.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+            select.innerHTML = '<option value="">-- 選取員工 --</option>' + filtered.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
         }
 
-        function loadUserDashboard() {
-            const userId = document.getElementById('user-select').value;
+        function loadUserDashboard(targetId = null) {
+            const userId = targetId || document.getElementById('user-select').value;
             if (!userId) return;
             const member = members.find(m => m.id === userId);
+            if (!member) return;
+            if (targetId) { 
+                document.getElementById('main-filter-role').value = member.role === 'APN' ? '🔵 APN' : member.role === 'RN' ? '🟣 RN' : member.role === 'PCA' ? '🟢 PCA' : '💗 EA';
+                filterEmployeeList(); 
+                document.getElementById('user-select').value = userId; 
+            }
             document.getElementById('display-user-name').innerText = member.name;
-            document.getElementById('form-target-name').innerText = member.name;
+            document.getElementById('user-rank-dot').style.backgroundColor = rankColors[member.role];
             document.getElementById('employee-dashboard').classList.remove('hidden');
+            document.getElementById('main-empty-state').classList.add('hidden');
             refreshDashboardData(userId);
         }
 
         function refreshDashboardData(userId) {
-            const userRecords = records.filter(r => r.userId === userId);
-            const ot = userRecords.filter(r => r.type === 'OT').sort((a,b)=>b.date.localeCompare(a.date));
-            const taken = userRecords.filter(r => r.type === 'TAKEN').sort((a,b)=>b.date.localeCompare(a.date));
-            const totalOT = ot.reduce((s,r)=>s+r.minutes,0), totalTaken = taken.reduce((s,r)=>s+r.minutes,0), balance = totalOT-totalTaken;
-            document.getElementById('stat-total-ot').innerText = totalOT;
-            document.getElementById('stat-total-taken').innerText = totalTaken;
-            document.getElementById('stat-balance').innerText = balance + " m";
-            document.getElementById('stat-balance-hours').innerText = `${Math.floor(Math.abs(balance)/60)} 小時 ${Math.abs(balance)%60} 分鐘`;
-            const render = (data, elId, color) => {
-                document.getElementById(elId).innerHTML = data.map(r => `<tr class="hover:bg-slate-50"><td class="p-4 font-bold">${r.date.split('-').slice(1).join('/')}</td><td class="p-4">${r.note||'-'}</td><td class="p-4 text-xs"><b>${r.recorder}</b></td><td class="p-4 text-right font-black ${color}">${r.minutes}</td></tr>`).join('') || '<tr><td colspan="4" class="p-8 text-center text-slate-300">無數據</td></tr>';
-            };
-            render(ot, 'table-ot', 'text-blue-600'); render(taken, 'table-taken', 'text-emerald-600');
+            const userRecords = records.filter(r => r.userId === userId).sort((a,b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+            
+            const totalOT = userRecords.filter(r=>r.type==='OT').reduce((s,r)=>s+r.minutes,0);
+            const totalTaken = userRecords.filter(r=>r.type==='TAKEN').reduce((s,r)=>s+r.minutes,0);
+            const balance = totalOT - totalTaken;
+
+            document.getElementById('stat-total-ot').innerText = totalOT + " m";
+            document.getElementById('stat-total-taken').innerText = totalTaken + " m";
+            document.getElementById('stat-balance').innerHTML = `${balance < 0 ? '-' : balance > 0 ? '+' : ''}${Math.abs(balance)}<span class="text-xl">m</span>`;
+            document.getElementById('stat-balance-hours').innerText = `${Math.floor(Math.abs(balance)/60)}H ${Math.abs(balance)%60}M`;
+
+            const listContainer = document.getElementById('unified-record-list');
+            if (userRecords.length === 0) {
+                listContainer.innerHTML = `<div class="p-20 text-center border-2 border-dashed border-slate-200 rounded-[32px] text-slate-400 font-bold bg-white">目前無任何考勤流水紀錄</div>`;
+                return;
+            }
+
+            listContainer.innerHTML = userRecords.map(r => {
+                const isOT = r.type === 'OT';
+                return `
+                    <div class="card p-6 flex justify-between items-center group transition-all hover:shadow-md ${isOT ? 'record-card-ot' : 'record-card-taken'}">
+                        <div class="flex flex-col gap-1">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">${r.date}</span>
+                                <span class="text-[9px] font-black px-2 py-0.5 rounded-md ${isOT ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}">${isOT ? 'OT ADD' : 'TIME TAKEN'}</span>
+                            </div>
+                            <div class="text-base font-black text-slate-800">${r.note || '例行性紀錄'}</div>
+                            <div class="text-[10px] font-bold text-slate-400">核實人: ${r.recorder} (${r.recorderRank || 'N/A'})</div>
+                        </div>
+                        <div class="flex items-center gap-6">
+                            <div class="text-2xl font-black ${isOT ? 'text-blue-600' : 'text-emerald-600'}">
+                                ${isOT ? '+' : '-'}${r.minutes}<span class="text-xs ml-0.5">m</span>
+                            </div>
+                            <button onclick="deleteRecord('${r.id}')" class="w-10 h-10 rounded-2xl bg-red-50 text-red-600 opacity-0 group-hover:opacity-100 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center font-bold">×</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         function addRecord() {
-            const userId = document.getElementById('user-select').value, mins = parseInt(document.getElementById('record-minutes').value), recorder = document.getElementById('recorder-name').value.trim();
-            if (!userId || isNaN(mins) || !recorder) return showToast('請填寫完整資訊');
-            records.push({ id: Date.now().toString(), userId, type: document.getElementById('record-type').value, date: document.getElementById('record-date').value, minutes: mins, note: document.getElementById('record-note').value, recorder, recorderRole: document.getElementById('recorder-role').value });
-            localStorage.setItem('ot_last_recorder_name', recorder);
-            saveData(); refreshDashboardData(userId); toggleRecordForm(); renderOutstandingList(); showToast('✅ 紀錄已保存');
+            const userId = document.getElementById('user-select').value, mins = parseInt(document.getElementById('record-minutes').value);
+            const recorder = document.getElementById('recorder-name').value.trim(), rank = document.getElementById('recorder-rank').value;
+            if (!userId || isNaN(mins) || !recorder) return showToast('請填妥所有必要資料');
+            
+            records.push({ 
+                id: Date.now().toString(), userId, type: document.getElementById('record-type').value, 
+                date: document.getElementById('record-date').value, minutes: mins, 
+                note: document.getElementById('record-note').value.trim(), recorder, recorderRank: rank 
+            });
+            
+            document.getElementById('record-minutes').value = ''; 
+            document.getElementById('record-note').value = '';
+            updateAllUI(); loadUserDashboard(); 
+            showToast('✅ 紀錄已成功加入流水帳');
+            toggleRecordForm();
         }
-
-        function addMember() {
-            const name = document.getElementById('new-member-name').value.trim();
-            if (!name) return;
-            members.push({ id: Date.now().toString(), name, role: document.getElementById('new-member-role').value });
-            document.getElementById('new-member-name').value = ''; updateAllUI();
-        }
-
-        function removeMember(id) { if(confirm('確定移除此員工及其所有紀錄？')) { members=members.filter(m=>m.id!==id); records=records.filter(r=>r.userId!==id); updateAllUI(); } }
 
         function updateAllUI() {
-            renderOutstandingList();
-            const roles = [['APN','list-apn','group-ot-apn'], ['RN','list-rn','group-ot-rn'], ['職工','list-staff','group-ot-staff'], ['文員','list-clerk','group-ot-clerk']];
-            roles.forEach(([role, listId, totalId]) => {
+            const roles = ['APN', 'RN', 'PCA', 'EA'];
+            roles.forEach(role => {
                 const group = members.filter(m => m.role === role);
-                let total = 0;
-                document.getElementById(listId).innerHTML = group.map(m => {
-                    const bal = records.filter(r=>r.userId===m.id).reduce((s,r)=>s+(r.type==='OT'?r.minutes:-r.minutes),0);
-                    total += bal;
-                    return `<div class="flex justify-between p-2 bg-slate-50 rounded text-sm"><b>${m.name}</b><span>${bal}m <button onclick="removeMember('${m.id}')" class="ml-2 text-red-400 hover:text-red-600">×</button></span></div>`;
-                }).join('');
-                document.getElementById(totalId).innerText = total + 'm';
+                const listEl = document.getElementById(`list-${role.toLowerCase()}`);
+                let groupSum = 0;
+                
+                if (listEl) {
+                    listEl.innerHTML = group.map(m => {
+                        const b = records.filter(r=>r.userId===m.id).reduce((s,r)=>s+(r.type==='OT'?r.minutes:-r.minutes),0);
+                        groupSum += b;
+                        return `
+                            <div ondblclick="jumpToMember('${m.id}')" class="flex justify-between items-center p-3.5 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 transition-all cursor-pointer group shadow-sm">
+                                <div class="flex items-center gap-3">
+                                    <div class="dot-indicator"></div>
+                                    <span class="font-bold text-sm text-slate-700">${m.name}</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="font-black text-xs ${b >= 0 ? 'text-blue-600' : 'text-red-500'}">${b}m</span>
+                                    <button onclick="event.stopPropagation(); removeMember('${m.id}')" class="text-slate-300 hover:text-red-500 font-bold px-1 opacity-0 group-hover:opacity-100 transition-all">×</button>
+                                </div>
+                            </div>`;
+                    }).join('');
+                }
+                const totalEl = document.getElementById(`group-ot-${role.toLowerCase()}`);
+                if (totalEl) totalEl.innerText = groupSum + 'm';
             });
-            saveData();
+            localStorage.setItem('ot_members', JSON.stringify(members));
+            localStorage.setItem('ot_records', JSON.stringify(records));
         }
 
-        function renderOutstandingList() {
-            const list = members.map(m => ({...m, bal: records.filter(r=>r.userId===m.id).reduce((s,r)=>s+(r.type==='OT'?r.minutes:-r.minutes),0)})).sort((a,b)=>b.bal-a.bal).slice(0,3);
-            document.getElementById('outstanding-list').innerHTML = list.map(m => `<div class="bg-white/10 p-4 rounded-2xl flex justify-between"><div><p class="font-black">${m.name}</p><p class="text-[10px] opacity-60">${m.role}</p></div><p class="font-black text-xl">${m.bal}m</p></div>`).join('');
+        function jumpToMember(id) { switchTab('main'); loadUserDashboard(id); }
+        function addMember() {
+            const name = document.getElementById('new-member-name').value.trim();
+            if (!name) return showToast('請輸入員工姓名');
+            members.push({ id: Date.now().toString(), name, role: document.getElementById('new-member-role').value });
+            document.getElementById('new-member-name').value = ''; updateAllUI(); showToast('👤 人員註冊成功');
         }
-
-        function handleSettingsClick() { if(isAdminLoggedIn) switchTab('settings'); else { document.getElementById('admin-password').value=''; document.getElementById('login-overlay').classList.remove('hidden'); } }
-        function verifyAdmin() { if(document.getElementById('admin-password').value === storedPassword) { isAdminLoggedIn=true; closeModal('login-overlay'); switchTab('settings'); } else { document.getElementById('login-error').classList.remove('hidden'); } }
-        function logoutAdmin() { isAdminLoggedIn = false; switchTab('main'); }
-        function openChangePasswordModal() { document.getElementById('password-overlay').classList.remove('hidden'); }
-        function changeAdminPassword() {
-            const p1 = document.getElementById('new-pwd-1').value, p2 = document.getElementById('new-pwd-2').value;
-            if(!p1 || p1 !== p2) return showToast('密碼不一致');
-            storedPassword = p1; saveData(); closeModal('password-overlay'); showToast('密碼已修改');
+        function deleteRecord(id) {
+            if(!isAdminLoggedIn) return showToast('⚠️ 需管理員權限');
+            if(confirm('確定要移除此筆流水紀錄？')) { records=records.filter(r=>r.id!==id); updateAllUI(); loadUserDashboard(); showToast('🗑️ 紀錄已抹除'); }
         }
+        function removeMember(id) { if(confirm('警告：這將會同步刪除該員工的所有紀錄，確定？')) { members=members.filter(m=>m.id!==id); records=records.filter(r=>r.userId!==id); updateAllUI(); showToast('🗑️ 成員資料已移除'); } }
+        function handleSettingsClick() { if(isAdminLoggedIn) switchTab('settings'); else { document.getElementById('login-overlay').classList.remove('hidden'); document.getElementById('admin-password').focus(); } }
+        function verifyAdmin() { if(document.getElementById('admin-password').value === storedPassword) { isAdminLoggedIn=true; closeModal('login-overlay'); switchTab('settings'); document.getElementById('admin-password').value = ''; showToast('🔓 安全模組已解鎖'); } else showToast('❌ 錯誤碼'); }
+        function logoutAdmin() { isAdminLoggedIn = false; switchTab('main'); showToast('🔒 已恢復安全鎖定'); }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-        function toggleRecordForm() { document.getElementById('record-form').classList.toggle('hidden'); }
-        function quickMins(v) { document.getElementById('record-minutes').value = v; }
         function clearSearch() { document.getElementById('main-filter-role').value = ''; filterEmployeeList(); }
-        function showToast(m) { const t = document.getElementById('toast'); t.innerText=m; t.classList.remove('translate-y-20', 'opacity-0'); setTimeout(()=>t.classList.add('translate-y-20', 'opacity-0'), 2000); }
-        function updateFormTheme() { const type = document.getElementById('record-type').value; const btn = document.getElementById('record-submit-btn'); btn.className = type==='OT' ? 'btn-primary w-full md:w-64' : 'btn-success w-full md:w-64'; btn.innerText = type==='OT' ? '完成加班錄入' : '完成補時錄入'; }
+        function showToast(m) { const t = document.getElementById('toast'), msg = document.getElementById('toast-msg'); msg.innerText=m; t.classList.remove('translate-y-32', 'opacity-0'); setTimeout(()=>t.classList.add('translate-y-32', 'opacity-0'), 3000); }
+        function toggleRecordForm() { document.getElementById('record-form').classList.toggle('hidden'); }
+        function backupData() {
+            const data = { members, records, backupAt: new Date().toLocaleString() };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `補鐘備份_${new Date().toISOString().split('T')[0]}.json`; a.click(); showToast('💾 備份檔案已產生');
+        }
+        function importData(event) {
+            const file = event.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.members && data.records) { if (confirm('還原數據將完全替代現有資料，確定繼續？')) { members = data.members; records = data.records; updateAllUI(); showToast('📥 數據已同步更新'); } }
+                } catch (err) { showToast('❌ 無法解析檔案'); }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
         function exportToExcel() {
-            let csv = "\uFEFF姓名,職位,結餘(m)\n" + members.map(m => `"${m.name}","${m.role}",${records.filter(r=>r.userId===m.id).reduce((s,r)=>s+(r.type==='OT'?r.minutes:-r.minutes),0)}`).join("\n");
-            const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); link.download = '補鐘報表.csv'; link.click();
+            let csv = "\uFEFF姓名,組別,可用結餘(m),累計OT(m),累計已補(m)\n";
+            members.forEach(m => {
+                const recs = records.filter(r => r.userId === m.id);
+                const ot = recs.filter(r => r.type === 'OT').reduce((s,r)=>s+r.minutes,0);
+                const taken = recs.filter(r => r.type === 'TAKEN').reduce((s,r)=>s+r.minutes,0);
+                csv += `"${m.name}","${m.role}",${ot-taken},${ot},${taken}\n`;
+            });
+            const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'})); link.download = `考勤彙整表_${new Date().toISOString().split('T')[0]}.csv`; link.click(); showToast('📊 報表下載中');
         }
     </script>
 </body>
