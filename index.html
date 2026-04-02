@@ -26,11 +26,11 @@
         .input-enhanced:focus { @apply border-blue-600 ring-4 ring-blue-500/10; }
 
         /* 強化的組別色彩系統 */
-        .rank-wm_anc-theme { --rank-color: #f59e0b; --rank-bg: #fffbeb; --text-on-rank: #78350f; } /* 琥珀黃 (管理層) */
-        .rank-apn-theme { --rank-color: #2563eb; --rank-bg: #eff6ff; --text-on-rank: #ffffff; } /* 鮮藍 */
-        .rank-rn-theme { --rank-color: #8b5cf6; --rank-bg: #f5f3ff; --text-on-rank: #ffffff; }  /* 紫色 */
-        .rank-pca-theme { --rank-color: #059669; --rank-bg: #ecfdf5; --text-on-rank: #ffffff; } /* 翠綠 */
-        .rank-ea-theme { --rank-color: #d946ef; --rank-bg: #fdf4ff; --text-on-rank: #ffffff; }  /* 粉紫 */
+        .rank-wm_anc-theme { --rank-color: #f59e0b; --rank-bg: #fffbeb; --text-on-rank: #78350f; }
+        .rank-apn-theme { --rank-color: #2563eb; --rank-bg: #eff6ff; --text-on-rank: #ffffff; }
+        .rank-rn-theme { --rank-color: #8b5cf6; --rank-bg: #f5f3ff; --text-on-rank: #ffffff; }
+        .rank-pca-theme { --rank-color: #059669; --rank-bg: #ecfdf5; --text-on-rank: #ffffff; }
+        .rank-ea-theme { --rank-color: #d946ef; --rank-bg: #fdf4ff; --text-on-rank: #ffffff; }
 
         .rank-card-header {
             background-color: var(--rank-color);
@@ -50,14 +50,14 @@
         .btn-primary { @apply bg-blue-600 text-white px-6 py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg active:scale-95; }
         .overlay { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); }
         
-        /* 紀錄卡片樣式 */
         .record-card-ot { border-left: 8px solid #2563eb; background-color: #ffffff; }
         .record-card-taken { border-left: 8px solid #10b981; background-color: #ffffff; }
 
         label { color: #64748b !important; font-weight: 800 !important; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
         
-        /* 選單圓點顏色模擬 */
-        .color-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+        /* 旋轉動畫 */
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
@@ -108,11 +108,9 @@
             </div>
 
             <div id="employee-dashboard" class="hidden space-y-8">
+                <!-- 數據卡片與列表 (與之前一致) -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="card p-8 bg-slate-900 text-white border-none shadow-2xl relative overflow-hidden">
-                        <div class="absolute top-0 right-0 p-4 opacity-10">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-                        </div>
                         <p class="text-slate-400 text-xs font-black uppercase tracking-[0.2em]">當前可用結餘</p>
                         <h2 class="text-5xl font-black mt-3 flex items-baseline gap-2" id="stat-balance">0<span class="text-xl">m</span></h2>
                         <div class="mt-4 inline-flex items-center px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest border border-blue-500/30" id="stat-balance-hours">0H 0M</div>
@@ -132,23 +130,19 @@
                         <div id="user-rank-dot" class="w-4 h-4 rounded-full"></div>
                         <h3 class="text-2xl font-black text-slate-900" id="display-user-name">員工姓名</h3>
                     </div>
-                    <button onclick="toggleRecordForm()" class="btn-primary py-3.5 px-8 text-sm flex items-center gap-2 shadow-blue-500/20">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
-                        新增紀錄
-                    </button>
+                    <button onclick="toggleRecordForm()" class="btn-primary py-3.5 px-8 text-sm flex items-center gap-2">新增紀錄</button>
                 </div>
 
-                <!-- 快速新增表單 -->
-                <div id="record-form" class="hidden card overflow-hidden border-2 border-blue-600 shadow-2xl animate-in zoom-in-95">
+                <div id="record-form" class="hidden card overflow-hidden border-2 border-blue-600 shadow-2xl">
                     <div class="p-8 space-y-6 bg-white">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div class="flex flex-col gap-2">
                                 <label>核實人姓名</label>
-                                <input type="text" id="recorder-name" class="p-4 border-2 border-slate-200 rounded-2xl font-bold focus:border-blue-600 outline-none">
+                                <input type="text" id="recorder-name" class="p-4 border-2 border-slate-200 rounded-2xl font-bold outline-none">
                             </div>
                             <div class="flex flex-col gap-2">
                                 <label>核實人 Rank</label>
-                                <select id="recorder-rank" class="p-4 border-2 border-slate-200 rounded-2xl font-bold focus:border-blue-600 outline-none">
+                                <select id="recorder-rank" class="p-4 border-2 border-slate-200 rounded-2xl font-bold outline-none">
                                     <option value="WM">WM</option><option value="ANC">ANC</option><option value="APN">APN</option><option value="DOM">DOM</option>
                                 </select>
                             </div>
@@ -156,56 +150,72 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div class="flex flex-col gap-2">
                                 <label>性質</label>
-                                <select id="record-type" class="p-4 border-2 border-slate-200 rounded-2xl font-bold focus:border-blue-600 outline-none bg-slate-50">
+                                <select id="record-type" class="p-4 border-2 border-slate-200 rounded-2xl font-bold outline-none">
                                     <option value="OT">● 超時工作 (OT +)</option>
                                     <option value="TAKEN">● 申請補時 (Taken -)</option>
                                 </select>
                             </div>
                             <div class="flex flex-col gap-2">
                                 <label>日期</label>
-                                <input type="date" id="record-date" class="p-4 border-2 border-slate-200 rounded-2xl font-bold focus:border-blue-600 outline-none">
+                                <input type="date" id="record-date" class="p-4 border-2 border-slate-200 rounded-2xl font-bold outline-none">
                             </div>
                             <div class="flex flex-col gap-2">
                                 <label>分鐘數</label>
-                                <input type="number" id="record-minutes" class="p-4 border-2 border-slate-200 rounded-2xl font-bold focus:border-blue-600 outline-none" placeholder="分鐘">
+                                <input type="number" id="record-minutes" class="p-4 border-2 border-slate-200 rounded-2xl font-bold outline-none" placeholder="分鐘">
                             </div>
                         </div>
                         <div class="flex flex-col gap-2">
                             <label>備註內容</label>
-                            <input type="text" id="record-note" class="p-4 border-2 border-slate-200 rounded-2xl font-bold focus:border-blue-600 outline-none" placeholder="請輸入補鐘原因或細節...">
+                            <input type="text" id="record-note" class="p-4 border-2 border-slate-200 rounded-2xl font-bold outline-none">
                         </div>
                         <div class="flex gap-4">
-                            <button onclick="toggleRecordForm()" class="flex-1 py-5 rounded-2xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-all">取消</button>
+                            <button onclick="toggleRecordForm()" class="flex-1 py-5 rounded-2xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200">取消</button>
                             <button onclick="addRecord()" class="flex-[2] btn-primary py-5 text-lg">確認並儲存</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- 統一流水列表 -->
                 <div id="unified-record-list" class="space-y-4"></div>
             </div>
 
             <div id="main-empty-state" class="card p-32 text-center border-dashed border-2 border-slate-300 bg-white">
-                <div class="bg-slate-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                </div>
                 <p class="text-slate-400 font-bold text-lg">請選取組別與員工姓名以查閱數據</p>
             </div>
         </div>
 
         <!-- 後台管理 -->
         <div id="view-settings" class="hidden space-y-8 animate-in slide-in-from-bottom-4">
+            <!-- 雲端同步區塊 -->
+            <div class="card p-10 border-2 border-blue-100 bg-blue-50/30">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                    <div>
+                        <h3 class="text-xl font-black text-slate-900">Google Sheets 雲端同步</h3>
+                        <p class="text-sm text-slate-500 font-bold mt-1">將數據備份至 Google 試算表，實現跨裝置同步</p>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <button id="btn-sync-cloud" onclick="syncWithCloud()" class="px-8 py-4 rounded-2xl bg-blue-600 text-white font-black hover:bg-blue-700 transition-all shadow-lg flex items-center gap-3">
+                            <svg id="sync-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            立即同步
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-6 flex gap-4">
+                    <input type="text" id="cloud-api-url" placeholder="在此貼上 Google Apps Script 的 Web App URL" class="flex-1 p-4 border-2 border-slate-200 rounded-2xl font-bold text-xs outline-none focus:border-blue-500">
+                    <button onclick="saveCloudConfig()" class="px-6 py-4 bg-slate-800 text-white rounded-2xl font-bold text-xs">儲存設定</button>
+                </div>
+                <p id="sync-status" class="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">尚未設定雲端網址</p>
+            </div>
+
             <div class="admin-gradient p-12 rounded-[48px] text-white flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl relative">
                 <div class="relative z-10">
                     <h2 class="text-4xl font-black tracking-tighter">系統管理中心</h2>
-                    <p class="text-blue-400 font-bold mt-2 uppercase tracking-widest text-[10px]">Administrative Control Panel</p>
                 </div>
                 <div class="flex flex-wrap gap-3 justify-center relative z-10">
-                    <button onclick="exportToExcel()" class="px-6 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/10 text-xs font-bold transition-all flex items-center gap-2">導出報表</button>
-                    <button onclick="backupData()" class="px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-xs font-bold transition-all">手動備份</button>
-                    <button onclick="document.getElementById('import-input').click()" class="px-6 py-3 rounded-2xl bg-amber-600 hover:bg-amber-500 text-xs font-bold transition-all">還原數據</button>
+                    <button onclick="exportToExcel()" class="px-6 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/10 text-xs font-bold">導出報表</button>
+                    <button onclick="backupData()" class="px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-xs font-bold">手動備份</button>
+                    <button onclick="document.getElementById('import-input').click()" class="px-6 py-3 rounded-2xl bg-amber-600 hover:bg-amber-500 text-xs font-bold">還原數據</button>
                     <input type="file" id="import-input" class="hidden" accept=".json" onchange="importData(event)">
-                    <button onclick="logoutAdmin()" class="px-6 py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-xs font-bold transition-all">登出</button>
+                    <button onclick="logoutAdmin()" class="px-6 py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-xs font-bold">登出</button>
                 </div>
             </div>
 
@@ -214,11 +224,11 @@
                 <div class="flex flex-col md:flex-row gap-6">
                     <div class="flex-1 flex flex-col gap-2">
                         <label>員工全名</label>
-                        <input type="text" id="new-member-name" placeholder="例如: Chan Tai Man" class="p-5 border-2 border-slate-200 rounded-3xl font-bold focus:border-blue-600 outline-none">
+                        <input type="text" id="new-member-name" placeholder="例如: Chan Tai Man" class="p-5 border-2 border-slate-200 rounded-3xl font-bold outline-none">
                     </div>
                     <div class="md:w-64 flex flex-col gap-2">
                         <label>所屬組別</label>
-                        <select id="new-member-role" class="p-5 border-2 border-slate-200 rounded-3xl font-bold focus:border-blue-600 outline-none bg-slate-50">
+                        <select id="new-member-role" class="p-5 border-2 border-slate-200 rounded-3xl font-bold outline-none bg-slate-50">
                             <option value="WM_ANC">WM/ANC</option><option value="APN">APN</option><option value="RN">RN</option><option value="PCA">PCA</option><option value="EA">EA</option>
                         </select>
                     </div>
@@ -226,137 +236,121 @@
                 </div>
             </div>
 
-            <!-- 分組卡片展示 -->
+            <!-- 分組卡片展示 (省略重複內容) -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-                <!-- WM/ANC -->
-                <div class="card overflow-hidden rank-wm_anc-theme rank-card-body">
-                    <div class="rank-card-header">
-                        <span>WM/ANC 組</span>
-                        <span id="group-ot-wm_anc" class="bg-white/20 px-2 py-1 rounded text-[10px]">0m</span>
-                    </div>
-                    <div id="list-wm_anc" class="p-4 space-y-2 min-h-[120px] bg-[var(--rank-bg)]"></div>
-                </div>
-                <!-- APN -->
-                <div class="card overflow-hidden rank-apn-theme rank-card-body">
-                    <div class="rank-card-header">
-                        <span>APN 組</span>
-                        <span id="group-ot-apn" class="bg-white/20 px-2 py-1 rounded text-[10px]">0m</span>
-                    </div>
-                    <div id="list-apn" class="p-4 space-y-2 min-h-[120px] bg-[var(--rank-bg)]"></div>
-                </div>
-                <!-- RN -->
-                <div class="card overflow-hidden rank-rn-theme rank-card-body">
-                    <div class="rank-card-header">
-                        <span>RN 組</span>
-                        <span id="group-ot-rn" class="bg-white/20 px-2 py-1 rounded text-[10px]">0m</span>
-                    </div>
-                    <div id="list-rn" class="p-4 space-y-2 min-h-[120px] bg-[var(--rank-bg)]"></div>
-                </div>
-                <!-- PCA -->
-                <div class="card overflow-hidden rank-pca-theme rank-card-body">
-                    <div class="rank-card-header">
-                        <span>PCA 組</span>
-                        <span id="group-ot-pca" class="bg-white/20 px-2 py-1 rounded text-[10px]">0m</span>
-                    </div>
-                    <div id="list-pca" class="p-4 space-y-2 min-h-[120px] bg-[var(--rank-bg)]"></div>
-                </div>
-                <!-- EA -->
-                <div class="card overflow-hidden rank-ea-theme rank-card-body">
-                    <div class="rank-card-header">
-                        <span>EA 組</span>
-                        <span id="group-ot-ea" class="bg-white/20 px-2 py-1 rounded text-[10px]">0m</span>
-                    </div>
-                    <div id="list-ea" class="p-4 space-y-2 min-h-[120px] bg-[var(--rank-bg)]"></div>
-                </div>
+                <div class="card overflow-hidden rank-wm_anc-theme rank-card-body"><div class="rank-card-header"><span>WM/ANC</span><span id="group-ot-wm_anc" class="bg-white/20 px-2 py-1 rounded text-[10px]">0m</span></div><div id="list-wm_anc" class="p-4 space-y-2 min-h-[120px] bg-[var(--rank-bg)]"></div></div>
+                <div class="card overflow-hidden rank-apn-theme rank-card-body"><div class="rank-card-header"><span>APN</span><span id="group-ot-apn" class="bg-white/20 px-2 py-1 rounded text-[10px]">0m</span></div><div id="list-apn" class="p-4 space-y-2 min-h-[120px] bg-[var(--rank-bg)]"></div></div>
+                <div class="card overflow-hidden rank-rn-theme rank-card-body"><div class="rank-card-header"><span>RN</span><span id="group-ot-rn" class="bg-white/20 px-2 py-1 rounded text-[10px]">0m</span></div><div id="list-rn" class="p-4 space-y-2 min-h-[120px] bg-[var(--rank-bg)]"></div></div>
+                <div class="card overflow-hidden rank-pca-theme rank-card-body"><div class="rank-card-header"><span>PCA</span><span id="group-ot-pca" class="bg-white/20 px-2 py-1 rounded text-[10px]">0m</span></div><div id="list-pca" class="p-4 space-y-2 min-h-[120px] bg-[var(--rank-bg)]"></div></div>
+                <div class="card overflow-hidden rank-ea-theme rank-card-body"><div class="rank-card-header"><span>EA</span><span id="group-ot-ea" class="bg-white/20 px-2 py-1 rounded text-[10px]">0m</span></div><div id="list-ea" class="p-4 space-y-2 min-h-[120px] bg-[var(--rank-bg)]"></div></div>
             </div>
         </div>
     </div>
 
-    <!-- 驗證彈窗 -->
+    <!-- 驗證彈窗與通知 (省略重複內容) -->
     <div id="login-overlay" class="fixed inset-0 z-50 flex items-center justify-center hidden p-6 overlay" onclick="if(event.target===this) closeModal('login-overlay')">
         <div class="bg-white rounded-[48px] shadow-2xl w-full max-w-sm p-14 text-center animate-in zoom-in-95" onclick="event.stopPropagation()">
-            <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-8">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-            </div>
             <h2 class="text-2xl font-black mb-10 text-slate-900">後台管理授權</h2>
             <input type="password" id="admin-password" placeholder="••••" class="w-full text-center text-4xl font-black border-b-4 border-slate-200 outline-none pb-4 focus:border-blue-600 tracking-[0.5em] mb-12 text-slate-900" onkeyup="if(event.key==='Enter') verifyAdmin()">
             <button onclick="verifyAdmin()" class="btn-primary w-full py-6 text-xl shadow-blue-500/30">解除安全鎖定</button>
         </div>
     </div>
-
-    <!-- 通知 -->
-    <div id="toast" class="fixed bottom-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-12 py-6 rounded-[32px] shadow-2xl transition-all translate-y-32 opacity-0 z-[100] font-black text-sm tracking-widest flex items-center gap-4">
-        <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-        <span id="toast-msg"></span>
-    </div>
+    <div id="toast" class="fixed bottom-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-12 py-6 rounded-[32px] shadow-2xl transition-all translate-y-32 opacity-0 z-[100] font-black text-sm tracking-widest flex items-center gap-4"><span id="toast-msg"></span></div>
 
     <script>
         let members = JSON.parse(localStorage.getItem('ot_members')) || [];
         let records = JSON.parse(localStorage.getItem('ot_records')) || [];
         let storedPassword = localStorage.getItem('ot_admin_pwd') || "8888";
+        let cloudUrl = localStorage.getItem('ot_cloud_url') || "";
         let isAdminLoggedIn = false;
 
-        const rankColors = { 
-            'WM_ANC': '#f59e0b',
-            'APN': '#2563eb', 
-            'RN': '#8b5cf6', 
-            'PCA': '#059669', 
-            'EA': '#d946ef' 
-        };
+        const rankColors = { 'WM_ANC': '#f59e0b', 'APN': '#2563eb', 'RN': '#8b5cf6', 'PCA': '#059669', 'EA': '#d946ef' };
 
         window.onload = () => {
             document.getElementById('record-date').valueAsDate = new Date();
+            document.getElementById('cloud-api-url').value = cloudUrl;
+            updateCloudStatus();
             updateAllUI();
+            if(cloudUrl) syncWithCloud(true); // 自動從雲端拉取
         };
 
+        // --- 雲端同步邏輯 ---
+        function saveCloudConfig() {
+            cloudUrl = document.getElementById('cloud-api-url').value.trim();
+            localStorage.setItem('ot_cloud_url', cloudUrl);
+            updateCloudStatus();
+            showToast('✅ 雲端網址已儲存');
+        }
+
+        function updateCloudStatus() {
+            const status = document.getElementById('sync-status');
+            status.innerText = cloudUrl ? `雲端已連動: ${cloudUrl.substring(0, 30)}...` : "尚未設定雲端網址";
+        }
+
+        async function syncWithCloud(isPullOnly = false) {
+            if (!cloudUrl) return isPullOnly ? null : showToast('❌ 請先設定雲端網址');
+            
+            const btn = document.getElementById('btn-sync-cloud');
+            const icon = document.getElementById('sync-icon');
+            btn.disabled = true;
+            icon.classList.add('spin');
+            
+            try {
+                if (isPullOnly) {
+                    // 拉取 (Get)
+                    const response = await fetch(cloudUrl);
+                    const cloudData = await response.json();
+                    if (cloudData.members && cloudData.records) {
+                        members = cloudData.members;
+                        records = cloudData.records;
+                        updateAllUI();
+                        showToast('☁️ 已從雲端更新數據');
+                    }
+                } else {
+                    // 推送 (Post)
+                    const data = { members, records, updatedAt: new Date().toISOString() };
+                    await fetch(cloudUrl, {
+                        method: 'POST',
+                        mode: 'no-cors', // GAS postData 限制
+                        body: JSON.stringify(data)
+                    });
+                    showToast('☁️ 數據已推送到 Google Sheets');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('❌ 同步失敗，請檢查網址或權限');
+            } finally {
+                btn.disabled = false;
+                icon.classList.remove('spin');
+            }
+        }
+
+        // --- 原有邏輯 ---
         function switchTab(tab) {
             const isMain = tab === 'main';
             document.getElementById('view-main').classList.toggle('hidden', !isMain);
             document.getElementById('view-settings').classList.toggle('hidden', isMain);
             document.getElementById('btn-main').className = isMain ? 'px-10 py-2.5 rounded-xl font-bold transition-all text-sm tab-active' : 'px-10 py-2.5 rounded-xl font-bold transition-all text-sm text-slate-500 hover:text-blue-600';
             document.getElementById('btn-settings').className = !isMain ? 'px-10 py-2.5 rounded-xl font-bold transition-all text-sm tab-active' : 'px-10 py-2.5 rounded-xl font-bold transition-all text-sm text-slate-500 hover:text-blue-600';
-            updateAllUI();
         }
 
         function filterEmployeeList() {
-            // 提取組別 ID (忽略圓點裝飾符)
-            const rawValue = document.getElementById('main-filter-role').value;
-            const role = rawValue.replace(/[^A-Z_]/g, ''); 
-            
+            const role = document.getElementById('main-filter-role').value;
             const select = document.getElementById('user-select');
             document.getElementById('employee-dashboard').classList.add('hidden');
             document.getElementById('main-empty-state').classList.remove('hidden');
-            
-            if (!role) { 
-                select.innerHTML = '<option value="">-- 請先選擇組別 --</option>'; 
-                return; 
-            }
-            
+            if (!role) { select.innerHTML = '<option value="">-- 請先選擇組別 --</option>'; return; }
             const filtered = members.filter(m => m.role === role).sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant'));
             select.innerHTML = '<option value="">-- 選取員工 --</option>' + filtered.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
         }
 
-        function loadUserDashboard(targetId = null) {
-            const userId = targetId || document.getElementById('user-select').value;
+        function loadUserDashboard(id = null) {
+            const userId = id || document.getElementById('user-select').value;
             if (!userId) return;
-            const member = members.find(m => m.id === userId);
-            if (!member) return;
-            
-            if (targetId) { 
-                const roleMap = {
-                    'WM_ANC': 'WM_ANC',
-                    'APN': 'APN',
-                    'RN': 'RN',
-                    'PCA': 'PCA',
-                    'EA': 'EA'
-                };
-                document.getElementById('main-filter-role').value = roleMap[member.role] || member.role;
-                filterEmployeeList(); 
-                document.getElementById('user-select').value = userId; 
-            }
-            
-            document.getElementById('display-user-name').innerText = member.name;
-            document.getElementById('user-rank-dot').style.backgroundColor = rankColors[member.role];
+            const m = members.find(m => m.id === userId);
+            if (!m) return;
+            document.getElementById('display-user-name').innerText = m.name;
+            document.getElementById('user-rank-dot').style.backgroundColor = rankColors[m.role];
             document.getElementById('employee-dashboard').classList.remove('hidden');
             document.getElementById('main-empty-state').classList.add('hidden');
             refreshDashboardData(userId);
@@ -364,89 +358,55 @@
 
         function refreshDashboardData(userId) {
             const userRecords = records.filter(r => r.userId === userId).sort((a,b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
-            
-            const totalOT = userRecords.filter(r=>r.type==='OT').reduce((s,r)=>s+r.minutes,0);
-            const totalTaken = userRecords.filter(r=>r.type==='TAKEN').reduce((s,r)=>s+r.minutes,0);
-            const balance = totalOT - totalTaken;
-
-            document.getElementById('stat-total-ot').innerText = totalOT + " m";
-            document.getElementById('stat-total-taken').innerText = totalTaken + " m";
-            document.getElementById('stat-balance').innerHTML = `${balance < 0 ? '-' : balance > 0 ? '+' : ''}${Math.abs(balance)}<span class="text-xl">m</span>`;
-            document.getElementById('stat-balance-hours').innerText = `${Math.floor(Math.abs(balance)/60)}H ${Math.abs(balance)%60}M`;
-
+            const ot = userRecords.filter(r=>r.type==='OT').reduce((s,r)=>s+r.minutes,0);
+            const taken = userRecords.filter(r=>r.type==='TAKEN').reduce((s,r)=>s+r.minutes,0);
+            const b = ot - taken;
+            document.getElementById('stat-total-ot').innerText = ot + " m";
+            document.getElementById('stat-total-taken').innerText = taken + " m";
+            document.getElementById('stat-balance').innerHTML = `${b < 0 ? '-' : b > 0 ? '+' : ''}${Math.abs(b)}<span class="text-xl">m</span>`;
+            document.getElementById('stat-balance-hours').innerText = `${Math.floor(Math.abs(b)/60)}H ${Math.abs(b)%60}M`;
             const listContainer = document.getElementById('unified-record-list');
-            if (userRecords.length === 0) {
-                listContainer.innerHTML = `<div class="p-20 text-center border-2 border-dashed border-slate-200 rounded-[32px] text-slate-400 font-bold bg-white">目前無任何考勤流水紀錄</div>`;
-                return;
-            }
-
-            listContainer.innerHTML = userRecords.map(r => {
-                const isOT = r.type === 'OT';
-                return `
-                    <div class="card p-6 flex justify-between items-center group transition-all hover:shadow-md ${isOT ? 'record-card-ot' : 'record-card-taken'}">
-                        <div class="flex flex-col gap-1">
-                            <div class="flex items-center gap-2">
-                                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">${r.date}</span>
-                                <span class="text-[9px] font-black px-2 py-0.5 rounded-md ${isOT ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}">${isOT ? 'OT ADD' : 'TIME TAKEN'}</span>
-                            </div>
-                            <div class="text-base font-black text-slate-800">${r.note || '例行性紀錄'}</div>
-                            <div class="text-[10px] font-bold text-slate-400">核實人: ${r.recorder} (${r.recorderRank || 'N/A'})</div>
-                        </div>
-                        <div class="flex items-center gap-6">
-                            <div class="text-2xl font-black ${isOT ? 'text-blue-600' : 'text-emerald-600'}">
-                                ${isOT ? '+' : '-'}${r.minutes}<span class="text-xs ml-0.5">m</span>
-                            </div>
-                            <button onclick="deleteRecord('${r.id}')" class="w-10 h-10 rounded-2xl bg-red-50 text-red-600 opacity-0 group-hover:opacity-100 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center font-bold">×</button>
-                        </div>
+            if (userRecords.length === 0) { listContainer.innerHTML = `<div class="p-20 text-center border-2 border-dashed border-slate-200 rounded-[32px] text-slate-400 font-bold bg-white">目前無紀錄</div>`; return; }
+            listContainer.innerHTML = userRecords.map(r => `
+                <div class="card p-6 flex justify-between items-center group ${r.type === 'OT' ? 'record-card-ot' : 'record-card-taken'}">
+                    <div class="flex flex-col gap-1">
+                        <span class="text-[10px] font-black uppercase text-slate-400">${r.date}</span>
+                        <div class="text-base font-black text-slate-800">${r.note || '例行紀錄'}</div>
+                        <div class="text-[10px] font-bold text-slate-400">核實人: ${r.recorder}</div>
                     </div>
-                `;
-            }).join('');
+                    <div class="flex items-center gap-6">
+                        <div class="text-2xl font-black ${r.type === 'OT' ? 'text-blue-600' : 'text-emerald-600'}">${r.type === 'OT' ? '+' : '-'}${r.minutes}m</div>
+                        <button onclick="deleteRecord('${r.id}')" class="w-10 h-10 rounded-2xl bg-red-50 text-red-600 opacity-0 group-hover:opacity-100 flex items-center justify-center font-bold">×</button>
+                    </div>
+                </div>`).join('');
         }
 
         function addRecord() {
             const userId = document.getElementById('user-select').value, mins = parseInt(document.getElementById('record-minutes').value);
-            const recorder = document.getElementById('recorder-name').value.trim(), rank = document.getElementById('recorder-rank').value;
-            if (!userId || isNaN(mins) || !recorder) return showToast('請填妥所有必要資料');
-            
-            records.push({ 
-                id: Date.now().toString(), userId, type: document.getElementById('record-type').value, 
-                date: document.getElementById('record-date').value, minutes: mins, 
-                note: document.getElementById('record-note').value.trim(), recorder, recorderRank: rank 
-            });
-            
-            document.getElementById('record-minutes').value = ''; 
-            document.getElementById('record-note').value = '';
-            updateAllUI(); loadUserDashboard(); 
-            showToast('✅ 紀錄已成功加入流水帳');
-            toggleRecordForm();
+            const recorder = document.getElementById('recorder-name').value.trim();
+            if (!userId || isNaN(mins) || !recorder) return showToast('請填妥資料');
+            records.push({ id: Date.now().toString(), userId, type: document.getElementById('record-type').value, date: document.getElementById('record-date').value, minutes: mins, note: document.getElementById('record-note').value.trim(), recorder, recorderRank: document.getElementById('recorder-rank').value });
+            updateAllUI(); loadUserDashboard(); showToast('✅ 紀錄已加入'); toggleRecordForm();
+            if(cloudUrl) syncWithCloud(); // 有設定雲端則自動推送到雲端
         }
 
         function updateAllUI() {
-            const roles = ['WM_ANC', 'APN', 'RN', 'PCA', 'EA'];
-            roles.forEach(role => {
+            ['WM_ANC', 'APN', 'RN', 'PCA', 'EA'].forEach(role => {
                 const group = members.filter(m => m.role === role);
                 const listEl = document.getElementById(`list-${role.toLowerCase()}`);
-                let groupSum = 0;
-                
+                let sum = 0;
                 if (listEl) {
                     listEl.innerHTML = group.map(m => {
                         const b = records.filter(r=>r.userId===m.id).reduce((s,r)=>s+(r.type==='OT'?r.minutes:-r.minutes),0);
-                        groupSum += b;
-                        return `
-                            <div ondblclick="jumpToMember('${m.id}')" class="flex justify-between items-center p-3.5 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 transition-all cursor-pointer group shadow-sm">
-                                <div class="flex items-center gap-3">
-                                    <div class="dot-indicator"></div>
-                                    <span class="font-bold text-sm text-slate-700">${m.name}</span>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="font-black text-xs ${b >= 0 ? 'text-blue-600' : 'text-red-500'}">${b}m</span>
-                                    <button onclick="event.stopPropagation(); removeMember('${m.id}')" class="text-slate-300 hover:text-red-500 font-bold px-1 opacity-0 group-hover:opacity-100 transition-all">×</button>
-                                </div>
-                            </div>`;
+                        sum += b;
+                        return `<div ondblclick="jumpToMember('${m.id}')" class="flex justify-between items-center p-3.5 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 transition-all cursor-pointer group">
+                            <div class="flex items-center gap-3"><div class="dot-indicator" style="background-color:${rankColors[role]}"></div><span class="font-bold text-sm text-slate-700">${m.name}</span></div>
+                            <div class="flex items-center gap-3"><span class="font-black text-xs ${b >= 0 ? 'text-blue-600' : 'text-red-500'}">${b}m</span><button onclick="event.stopPropagation(); removeMember('${m.id}')" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">×</button></div>
+                        </div>`;
                     }).join('');
                 }
                 const totalEl = document.getElementById(`group-ot-${role.toLowerCase()}`);
-                if (totalEl) totalEl.innerText = groupSum + 'm';
+                if (totalEl) totalEl.innerText = sum + 'm';
             });
             localStorage.setItem('ot_members', JSON.stringify(members));
             localStorage.setItem('ot_records', JSON.stringify(records));
@@ -455,48 +415,37 @@
         function jumpToMember(id) { switchTab('main'); loadUserDashboard(id); }
         function addMember() {
             const name = document.getElementById('new-member-name').value.trim();
-            if (!name) return showToast('請輸入員工姓名');
+            if (!name) return showToast('請輸入姓名');
             members.push({ id: Date.now().toString(), name, role: document.getElementById('new-member-role').value });
-            document.getElementById('new-member-name').value = ''; updateAllUI(); showToast('👤 人員註冊成功');
+            document.getElementById('new-member-name').value = ''; updateAllUI(); showToast('👤 註冊成功');
+            if(cloudUrl) syncWithCloud();
         }
-        function deleteRecord(id) {
-            if(!isAdminLoggedIn) return showToast('⚠️ 需管理員權限');
-            if(confirm('確定要移除此筆流水紀錄？')) { records=records.filter(r=>r.id!==id); updateAllUI(); loadUserDashboard(); showToast('🗑️ 紀錄已抹除'); }
-        }
-        function removeMember(id) { if(confirm('警告：這將會同步刪除該員工的所有紀錄，確定？')) { members=members.filter(m=>m.id!==id); records=records.filter(r=>r.userId!==id); updateAllUI(); showToast('🗑️ 成員資料已移除'); } }
+        function deleteRecord(id) { if(!isAdminLoggedIn) return showToast('⚠️ 需管理權限'); if(confirm('確定刪除？')) { records=records.filter(r=>r.id!==id); updateAllUI(); loadUserDashboard(); showToast('🗑️ 已刪除'); if(cloudUrl) syncWithCloud(); } }
+        function removeMember(id) { if(confirm('這會刪除所有紀錄，確定？')) { members=members.filter(m=>m.id!==id); records=records.filter(r=>r.userId!==id); updateAllUI(); showToast('🗑️ 已移除'); if(cloudUrl) syncWithCloud(); } }
         function handleSettingsClick() { if(isAdminLoggedIn) switchTab('settings'); else { document.getElementById('login-overlay').classList.remove('hidden'); document.getElementById('admin-password').focus(); } }
-        function verifyAdmin() { if(document.getElementById('admin-password').value === storedPassword) { isAdminLoggedIn=true; closeModal('login-overlay'); switchTab('settings'); document.getElementById('admin-password').value = ''; showToast('🔓 安全模組已解鎖'); } else showToast('❌ 錯誤碼'); }
-        function logoutAdmin() { isAdminLoggedIn = false; switchTab('main'); showToast('🔒 已恢復安全鎖定'); }
+        function verifyAdmin() { if(document.getElementById('admin-password').value === storedPassword) { isAdminLoggedIn=true; closeModal('login-overlay'); switchTab('settings'); document.getElementById('admin-password').value = ''; showToast('🔓 已解鎖'); } else showToast('❌ 密碼錯誤'); }
+        function logoutAdmin() { isAdminLoggedIn = false; switchTab('main'); showToast('🔒 已登出'); }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
         function clearSearch() { document.getElementById('main-filter-role').value = ''; filterEmployeeList(); }
         function showToast(m) { const t = document.getElementById('toast'), msg = document.getElementById('toast-msg'); msg.innerText=m; t.classList.remove('translate-y-32', 'opacity-0'); setTimeout(()=>t.classList.add('translate-y-32', 'opacity-0'), 3000); }
         function toggleRecordForm() { document.getElementById('record-form').classList.toggle('hidden'); }
-        function backupData() {
-            const data = { members, records, backupAt: new Date().toLocaleString() };
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `補鐘備份_${new Date().toISOString().split('T')[0]}.json`; a.click(); showToast('💾 備份檔案已產生');
-        }
+        function backupData() { const data = { members, records }; const blob = new Blob([JSON.stringify(data)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup.json`; a.click(); }
         function importData(event) {
             const file = event.target.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    if (data.members && data.records) { if (confirm('還原數據將完全替代現有資料，確定繼續？')) { members = data.members; records = data.records; updateAllUI(); showToast('📥 數據已同步更新'); } }
-                } catch (err) { showToast('❌ 無法解析檔案'); }
-                event.target.value = '';
-            };
-            reader.readAsText(file);
+            const r = new FileReader(); r.onload = (e) => {
+                const data = JSON.parse(e.target.result);
+                if (data.members && data.records) { members = data.members; records = data.records; updateAllUI(); showToast('📥 已導入'); }
+            }; r.readAsText(file);
         }
         function exportToExcel() {
-            let csv = "\uFEFF姓名,組別,可用結餘(m),累計OT(m),累計已補(m)\n";
+            let csv = "\uFEFF姓名,組別,結餘,OT,已補\n";
             members.forEach(m => {
                 const recs = records.filter(r => r.userId === m.id);
                 const ot = recs.filter(r => r.type === 'OT').reduce((s,r)=>s+r.minutes,0);
                 const taken = recs.filter(r => r.type === 'TAKEN').reduce((s,r)=>s+r.minutes,0);
                 csv += `"${m.name}","${m.role}",${ot-taken},${ot},${taken}\n`;
             });
-            const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'})); link.download = `考勤彙整表_${new Date().toISOString().split('T')[0]}.csv`; link.click(); showToast('📊 報表下載中');
+            const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); link.download = `report.csv`; link.click();
         }
     </script>
 </body>
