@@ -25,9 +25,8 @@
         .record-card-ot { border-left: 8px solid #2563eb; }
         .record-card-taken { border-left: 8px solid #10b981; }
         
-        /* 最高時數突顯樣式 */
-        .highlight-max { @apply bg-red-600 border-red-700 text-white !important; }
-        .highlight-max span { @apply text-white !important; }
+        /* 最高時數靜態突顯樣式 */
+        .text-max-highlight { color: #dc2626 !important; font-weight: 900 !important; }
 
         label { color: #64748b; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: block; }
         .spin { animation: spin 1s linear infinite; }
@@ -261,11 +260,11 @@
 
         function logoutAdmin() { isAdminLoggedIn = false; switchTab('main'); showToast('🔒 已登出'); }
 
-        function filterEmployeeList() {
+        function filterEmployeeList(selectedId = null) {
             const role = document.getElementById('main-filter-role').value;
             const select = document.getElementById('user-select');
             const filtered = members.filter(m => m.role === role);
-            select.innerHTML = '<option value="">-- 選取員工 --</option>' + filtered.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+            select.innerHTML = '<option value="">-- 選取員工 --</option>' + filtered.map(m => `<option value="${m.id}" ${m.id === selectedId ? 'selected' : ''}>${m.name}</option>`).join('');
         }
 
         function loadUserDashboard(id = null) {
@@ -277,6 +276,15 @@
             document.getElementById('employee-dashboard').classList.remove('hidden');
             document.getElementById('main-empty-state').classList.add('hidden');
             refreshDashboardData(userId);
+        }
+
+        // 新增：從後台直接進入個人紀錄
+        function jumpToUserRecord(userId, role) {
+            document.getElementById('main-filter-role').value = role;
+            filterEmployeeList(userId);
+            loadUserDashboard(userId);
+            switchTab('main');
+            showToast(`🔎 正在查看 ${members.find(m => m.id === userId).name} 的紀錄`);
         }
 
         function refreshDashboardData(userId) {
@@ -316,13 +324,14 @@
             ['WM_ANC', 'APN', 'RN', 'PCA', 'EA'].forEach(role => {
                 const groupMembers = members.filter(m => m.role === role);
                 
-                // 預先計算所有組員時數，找出最大值
+                // 計算所有組員時數
                 const memberBalances = groupMembers.map(m => {
                     const balance = records.filter(r => r.userId === m.id)
                         .reduce((s, r) => s + (r.type === 'OT' ? r.minutes : -r.minutes), 0);
                     return { ...m, balance };
                 });
 
+                // 找出該組最大值
                 const maxBalance = memberBalances.length > 0 ? Math.max(...memberBalances.map(m => m.balance)) : 0;
 
                 const listEl = document.getElementById(`list-${role.toLowerCase()}`);
@@ -330,14 +339,15 @@
 
                 listEl.innerHTML = memberBalances.map(m => {
                     groupSum += m.balance;
-                    // 如果時數等於最高值且大於0，則突顯
+                    // 如果時數等於最高值且大於 0，則所有符合條件的人都會顯示紅字
                     const isMax = m.balance === maxBalance && maxBalance > 0;
-                    const highlightClass = isMax ? 'highlight-max' : 'bg-white';
+                    const highlightClass = isMax ? 'text-max-highlight' : '';
 
                     return `
-                        <div class="flex justify-between items-center p-3 rounded-xl border border-slate-100 transition-colors ${highlightClass}">
-                            <span class="font-bold text-sm ${isMax ? 'text-white' : 'text-slate-700'}">${m.name}</span>
-                            <span class="font-black text-xs ${isMax ? 'text-white' : (m.balance >= 0 ? 'text-blue-600' : 'text-red-500')}">${m.balance}m</span>
+                        <div onclick="jumpToUserRecord('${m.id}', '${role}')" 
+                             class="flex justify-between items-center p-3 rounded-xl border border-slate-100 bg-white cursor-pointer hover:border-blue-300 hover:shadow-sm transition-all group">
+                            <span class="font-bold text-sm text-slate-700 ${highlightClass} group-hover:text-blue-600">${m.name}</span>
+                            <span class="font-black text-xs ${isMax ? 'text-max-highlight' : (m.balance >= 0 ? 'text-blue-600' : 'text-red-500')}">${m.balance}m</span>
                         </div>
                     `;
                 }).join('');
