@@ -32,6 +32,8 @@
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .overlay { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); }
+        
+        .btn-delete { @apply p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all; }
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
@@ -236,6 +238,21 @@
             if(cloudUrl) syncWithCloud();
         }
 
+        // 新增：刪除單筆紀錄
+        function deleteRecord(recordId) {
+            if (!confirm('確定要永久刪除此筆紀錄嗎？這將無法撤銷。')) return;
+            
+            const index = records.findIndex(r => r.id === recordId);
+            if (index !== -1) {
+                const userId = records[index].userId;
+                records.splice(index, 1);
+                updateAllUI();
+                refreshDashboardData(userId);
+                showToast('🗑️ 紀錄已刪除');
+                if(cloudUrl) syncWithCloud();
+            }
+        }
+
         function switchTab(tab) {
             const isMain = tab === 'main';
             document.getElementById('view-main').classList.toggle('hidden', !isMain);
@@ -278,7 +295,6 @@
             refreshDashboardData(userId);
         }
 
-        // 新增：從後台直接進入個人紀錄
         function jumpToUserRecord(userId, role) {
             document.getElementById('main-filter-role').value = role;
             filterEmployeeList(userId);
@@ -300,13 +316,20 @@
 
             const list = document.getElementById('unified-record-list');
             list.innerHTML = userRecords.map(r => `
-                <div class="card p-6 flex justify-between items-center ${r.type === 'OT' ? 'record-card-ot' : 'record-card-taken'}">
-                    <div>
+                <div class="card p-6 flex justify-between items-center ${r.type === 'OT' ? 'record-card-ot' : 'record-card-taken'} relative group">
+                    <div class="pr-12">
                         <div class="text-xs font-bold text-slate-400">${r.date} (${r.startTime || '--:--'} - ${r.endTime || '--:--'})</div>
                         <div class="font-black text-slate-800">${r.note || '無備註'}</div>
                         <div class="text-[10px] text-slate-400">核實: ${r.recorder} (${r.recorderRank || 'N/A'})</div>
                     </div>
-                    <div class="text-2xl font-black ${r.type === 'OT' ? 'text-blue-600' : 'text-emerald-600'}">${r.type === 'OT' ? '+' : '-'}${r.minutes}m</div>
+                    <div class="flex flex-col items-end gap-2">
+                        <div class="text-2xl font-black ${r.type === 'OT' ? 'text-blue-600' : 'text-emerald-600'}">${r.type === 'OT' ? '+' : '-'}${r.minutes}m</div>
+                        <button onclick="deleteRecord('${r.id}')" class="btn-delete" title="刪除此紀錄">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             `).join('');
         }
@@ -323,23 +346,18 @@
         function updateAllUI() {
             ['WM_ANC', 'APN', 'RN', 'PCA', 'EA'].forEach(role => {
                 const groupMembers = members.filter(m => m.role === role);
-                
-                // 計算所有組員時數
                 const memberBalances = groupMembers.map(m => {
                     const balance = records.filter(r => r.userId === m.id)
                         .reduce((s, r) => s + (r.type === 'OT' ? r.minutes : -r.minutes), 0);
                     return { ...m, balance };
                 });
 
-                // 找出該組最大值
                 const maxBalance = memberBalances.length > 0 ? Math.max(...memberBalances.map(m => m.balance)) : 0;
-
                 const listEl = document.getElementById(`list-${role.toLowerCase()}`);
                 let groupSum = 0;
 
                 listEl.innerHTML = memberBalances.map(m => {
                     groupSum += m.balance;
-                    // 如果時數等於最高值且大於 0，則所有符合條件的人都會顯示紅字
                     const isMax = m.balance === maxBalance && maxBalance > 0;
                     const highlightClass = isMax ? 'text-max-highlight' : '';
 
