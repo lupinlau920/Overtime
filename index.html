@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>員工補鐘管理 - 自動計算版</title>
+    <title>員工補鐘管理 - 完整功能版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
@@ -13,28 +13,44 @@
         .input-enhanced { @apply p-4 border-2 border-slate-200 rounded-2xl outline-none transition-all font-bold text-slate-800 bg-white; }
         .input-enhanced:focus { @apply border-blue-600 ring-4 ring-blue-500/10; }
         .btn-primary { @apply bg-blue-600 text-white px-6 py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg active:scale-95 disabled:bg-slate-300; }
+        
+        /* 組別色彩定義 */
+        .rank-wm_anc-theme { --rank-color: #f59e0b; --rank-bg: #fffbeb; }
+        .rank-apn-theme { --rank-color: #2563eb; --rank-bg: #eff6ff; }
+        .rank-rn-theme { --rank-color: #8b5cf6; --rank-bg: #f5f3ff; }
+        .rank-pca-theme { --rank-color: #059669; --rank-bg: #ecfdf5; }
+        .rank-ea-theme { --rank-color: #d946ef; --rank-bg: #fdf4ff; }
+
+        .rank-card-header { background-color: var(--rank-color); color: white; padding: 0.75rem 1rem; font-weight: 900; font-size: 0.75rem; display: flex; justify-content: space-between; }
         .record-card-ot { border-left: 8px solid #2563eb; }
         .record-card-taken { border-left: 8px solid #10b981; }
+        
         label { color: #64748b; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: block; }
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .overlay { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); }
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
     <div id="app" class="max-w-6xl mx-auto">
+        <!-- 頂部導航 -->
         <div class="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
             <div class="flex items-center gap-4">
                 <div class="bg-blue-600 p-3.5 rounded-2xl shadow-xl shadow-blue-500/20">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </div>
-                <h1 class="text-3xl font-black text-slate-900 tracking-tighter">Staff <span class="text-blue-600">TimeTracker</span></h1>
+                <div>
+                    <h1 class="text-3xl font-black text-slate-900 tracking-tighter">Staff <span class="text-blue-600">TimeTracker</span></h1>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Management System</p>
+                </div>
             </div>
             <div class="flex bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200">
                 <button onclick="switchTab('main')" id="btn-main" class="px-10 py-2.5 rounded-xl font-bold text-sm tab-active">數據查詢</button>
-                <button onclick="handleSettingsClick()" id="btn-settings" class="px-10 py-2.5 rounded-xl font-bold text-sm text-slate-500">後台管理</button>
+                <button onclick="handleSettingsClick()" id="btn-settings" class="px-10 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:text-blue-600">後台管理</button>
             </div>
         </div>
 
+        <!-- 主視圖 -->
         <div id="view-main" class="space-y-8">
             <div class="card p-8 grid grid-cols-1 md:grid-cols-3 gap-8 items-end border-2 border-slate-200">
                 <div><label>1. 選擇組別</label><select id="main-filter-role" onchange="filterEmployeeList()" class="input-enhanced w-full"><option value="">-- 全部 --</option><option value="WM_ANC">WM/ANC</option><option value="APN">APN</option><option value="RN">RN</option><option value="PCA">PCA</option><option value="EA">EA</option></select></div>
@@ -44,7 +60,7 @@
 
             <div id="employee-dashboard" class="hidden space-y-8">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="card p-8 bg-slate-900 text-white"><p class="text-slate-400 text-xs font-black uppercase tracking-widest">當前可用結餘</p><h2 class="text-5xl font-black mt-3" id="stat-balance">0m</h2><div id="stat-balance-hours" class="mt-4 text-blue-400 font-black text-xs">0H 0M</div></div>
+                    <div class="card p-8 bg-slate-900 text-white"><p class="text-slate-400 text-xs font-black uppercase">當前可用結餘</p><h2 class="text-5xl font-black mt-3" id="stat-balance">0m</h2><div id="stat-balance-hours" class="mt-4 text-blue-400 font-black text-xs">0H 0M</div></div>
                     <div class="card p-8 border-l-8 border-blue-600"><p class="text-slate-500 text-xs font-black uppercase">累積超時 (OT)</p><h2 class="text-4xl font-black mt-2" id="stat-total-ot">0 m</h2></div>
                     <div class="card p-8 border-l-8 border-emerald-500"><p class="text-slate-500 text-xs font-black uppercase">累積已補 (Taken)</p><h2 class="text-4xl font-black mt-2" id="stat-total-taken">0 m</h2></div>
                 </div>
@@ -54,10 +70,20 @@
                     <button onclick="toggleRecordForm()" class="btn-primary py-3.5 px-8 text-sm">新增紀錄</button>
                 </div>
 
+                <!-- 紀錄表單 (含自動時間計算與核實人職級) -->
                 <div id="record-form" class="hidden card overflow-hidden border-2 border-blue-600 shadow-2xl animate-in zoom-in-95">
                     <div class="p-8 space-y-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div><label>核實人姓名</label><input type="text" id="recorder-name" class="input-enhanced w-full"></div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div><label>核實人姓名</label><input type="text" id="recorder-name" class="input-enhanced w-full" placeholder="姓名"></div>
+                            <div>
+                                <label>核實人職級 (Rank)</label>
+                                <select id="recorder-rank" class="input-enhanced w-full">
+                                    <option value="APN">APN</option>
+                                    <option value="WM">WM</option>
+                                    <option value="ANC">ANC</option>
+                                    <option value="DOM">DOM</option>
+                                </select>
+                            </div>
                             <div><label>日期</label><input type="date" id="record-date" class="input-enhanced w-full"></div>
                         </div>
                         
@@ -90,15 +116,55 @@
             <div id="main-empty-state" class="card p-32 text-center border-dashed border-2 border-slate-300 text-slate-400 font-bold">請選取組別與員工姓名以查閱數據</div>
         </div>
 
-        <div id="view-settings" class="hidden space-y-8">
+        <!-- 後台管理視圖 -->
+        <div id="view-settings" class="hidden space-y-8 animate-in slide-in-from-bottom-4">
             <div class="card p-10 border-2 border-blue-100 bg-blue-50/30">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-xl font-black">Google Sheets 雲端同步</h3>
-                    <button id="btn-sync-cloud" onclick="syncWithCloud()" class="btn-primary flex items-center gap-2"><svg id="sync-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>立即同步</button>
+                <div class="flex flex-col md:flex-row justify-between items-center gap-6 mb-6">
+                    <div>
+                        <h3 class="text-xl font-black text-slate-900">Google Sheets 雲端同步</h3>
+                        <p class="text-xs text-slate-500 font-bold">透過 Google Apps Script 同步數據至雲端</p>
+                    </div>
+                    <button id="btn-sync-cloud" onclick="syncWithCloud()" class="btn-primary flex items-center gap-3">
+                        <svg id="sync-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        立即同步數據
+                    </button>
                 </div>
-                <input type="text" id="cloud-api-url" placeholder="貼上 Web App URL" class="input-enhanced w-full text-xs">
-                <button onclick="saveCloudConfig()" class="mt-4 px-6 py-3 bg-slate-800 text-white rounded-xl font-bold">儲存設定</button>
+                <div class="flex gap-4">
+                    <input type="text" id="cloud-api-url" placeholder="貼上 Web App URL" class="input-enhanced flex-1 text-xs">
+                    <button onclick="saveCloudConfig()" class="px-8 py-4 bg-slate-800 text-white rounded-2xl font-bold">儲存網址</button>
+                </div>
             </div>
+
+            <div class="card p-10">
+                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-8">註冊新人員</h3>
+                <div class="flex flex-col md:flex-row gap-6">
+                    <div class="flex-1"><label>員工全名</label><input type="text" id="new-member-name" placeholder="例如: Chan Tai Man" class="input-enhanced w-full"></div>
+                    <div class="md:w-64"><label>所屬組別</label><select id="new-member-role" class="input-enhanced w-full"><option value="WM_ANC">WM/ANC</option><option value="APN">APN</option><option value="RN">RN</option><option value="PCA">PCA</option><option value="EA">EA</option></select></div>
+                    <button onclick="addMember()" class="btn-primary px-16 h-[68px] mt-auto">註冊</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                <div class="card overflow-hidden rank-wm_anc-theme"><div class="rank-card-header"><span>WM/ANC</span><span id="group-ot-wm_anc">0m</span></div><div id="list-wm_anc" class="p-4 space-y-2 bg-[var(--rank-bg)] min-h-[100px]"></div></div>
+                <div class="card overflow-hidden rank-apn-theme"><div class="rank-card-header"><span>APN</span><span id="group-ot-apn">0m</span></div><div id="list-apn" class="p-4 space-y-2 bg-[var(--rank-bg)] min-h-[100px]"></div></div>
+                <div class="card overflow-hidden rank-rn-theme"><div class="rank-card-header"><span>RN</span><span id="group-ot-rn">0m</span></div><div id="list-rn" class="p-4 space-y-2 bg-[var(--rank-bg)] min-h-[100px]"></div></div>
+                <div class="card overflow-hidden rank-pca-theme"><div class="rank-card-header"><span>PCA</span><span id="group-ot-pca">0m</span></div><div id="list-pca" class="p-4 space-y-2 bg-[var(--rank-bg)] min-h-[100px]"></div></div>
+                <div class="card overflow-hidden rank-ea-theme"><div class="rank-card-header"><span>EA</span><span id="group-ot-ea">0m</span></div><div id="list-ea" class="p-4 space-y-2 bg-[var(--rank-bg)] min-h-[100px]"></div></div>
+            </div>
+
+            <div class="flex justify-center gap-4">
+                <button onclick="exportToExcel()" class="px-8 py-4 bg-white border border-slate-200 rounded-2xl font-bold hover:bg-slate-50">導出 CSV 報表</button>
+                <button onclick="logoutAdmin()" class="px-8 py-4 bg-red-50 text-red-600 rounded-2xl font-bold hover:bg-red-100">登出管理員</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 登入彈窗 -->
+    <div id="login-overlay" class="fixed inset-0 z-50 flex items-center justify-center hidden p-6 overlay" onclick="if(event.target===this) closeModal('login-overlay')">
+        <div class="bg-white rounded-[48px] shadow-2xl w-full max-sm p-14 text-center" onclick="event.stopPropagation()">
+            <h2 class="text-2xl font-black mb-10">後台授權</h2>
+            <input type="password" id="admin-password" placeholder="••••" class="w-full text-center text-4xl font-black border-b-4 border-slate-200 outline-none pb-4 focus:border-blue-600 tracking-[0.5em] mb-12" onkeyup="if(event.key==='Enter') verifyAdmin()">
+            <button onclick="verifyAdmin()" class="btn-primary w-full py-6 text-xl">解除鎖定</button>
         </div>
     </div>
 
@@ -108,6 +174,7 @@
         let members = JSON.parse(localStorage.getItem('ot_members')) || [];
         let records = JSON.parse(localStorage.getItem('ot_records')) || [];
         let cloudUrl = localStorage.getItem('ot_cloud_url') || "";
+        let isAdminLoggedIn = false;
         const rankColors = { 'WM_ANC': '#f59e0b', 'APN': '#2563eb', 'RN': '#8b5cf6', 'PCA': '#059669', 'EA': '#d946ef' };
 
         window.onload = () => {
@@ -116,7 +183,6 @@
             updateAllUI();
         };
 
-        // ---核心功能：自動計算分鐘---
         function calculateMinutes() {
             const start = document.getElementById('start-time').value;
             const end = document.getElementById('end-time').value;
@@ -131,13 +197,8 @@
 
             const [sH, sM] = start.split(':').map(Number);
             const [eH, eM] = end.split(':').map(Number);
-
             let diff = (eH * 60 + eM) - (sH * 60 + sM);
-
-            // 處理跨日邏輯 (例如 23:00 到 01:00)
-            if (diff < 0) {
-                diff += 24 * 60; 
-            }
+            if (diff < 0) diff += 24 * 60; 
 
             display.innerText = diff;
             hiddenInput.value = diff;
@@ -147,37 +208,53 @@
             const userId = document.getElementById('user-select').value;
             const mins = parseInt(document.getElementById('record-minutes').value);
             const recorder = document.getElementById('recorder-name').value.trim();
-            const startTime = document.getElementById('start-time').value;
-            const endTime = document.getElementById('end-time').value;
+            const recorderRank = document.getElementById('recorder-rank').value;
+            
+            if (!userId || mins <= 0 || !recorder) return showToast('❌ 請填寫完整並確保時間大於 0');
 
-            if (!userId || mins <= 0 || !recorder) return showToast('❌ 請填寫完整資料並確保時間大於 0');
-
-            const newRecord = {
+            records.push({
                 id: Date.now().toString(),
                 userId,
                 type: document.getElementById('record-type').value,
                 date: document.getElementById('record-date').value,
                 minutes: mins,
-                startTime,
-                endTime,
+                startTime: document.getElementById('start-time').value,
+                endTime: document.getElementById('end-time').value,
                 note: document.getElementById('record-note').value.trim(),
-                recorder
-            };
+                recorder,
+                recorderRank 
+            });
 
-            records.push(newRecord);
             updateAllUI();
             loadUserDashboard();
             toggleRecordForm();
-            showToast('✅ 紀錄已成功儲存');
+            showToast('✅ 紀錄已儲存');
             if(cloudUrl) syncWithCloud();
         }
 
-        // ---其餘 UI 邏輯 (簡化版，保持功能一致)---
         function switchTab(tab) {
             const isMain = tab === 'main';
             document.getElementById('view-main').classList.toggle('hidden', !isMain);
             document.getElementById('view-settings').classList.toggle('hidden', isMain);
+            document.getElementById('btn-main').className = isMain ? 'px-10 py-2.5 rounded-xl font-bold text-sm tab-active' : 'px-10 py-2.5 rounded-xl font-bold text-sm text-slate-500';
+            document.getElementById('btn-settings').className = !isMain ? 'px-10 py-2.5 rounded-xl font-bold text-sm tab-active' : 'px-10 py-2.5 rounded-xl font-bold text-sm text-slate-500';
         }
+
+        function handleSettingsClick() {
+            if(isAdminLoggedIn) switchTab('settings');
+            else { document.getElementById('login-overlay').classList.remove('hidden'); document.getElementById('admin-password').focus(); }
+        }
+
+        function verifyAdmin() {
+            if(document.getElementById('admin-password').value === "8888") {
+                isAdminLoggedIn = true;
+                closeModal('login-overlay');
+                switchTab('settings');
+                showToast('🔓 歡迎管理員');
+            } else showToast('❌ 密碼錯誤');
+        }
+
+        function logoutAdmin() { isAdminLoggedIn = false; switchTab('main'); showToast('🔒 已登出'); }
 
         function filterEmployeeList() {
             const role = document.getElementById('main-filter-role').value;
@@ -186,8 +263,8 @@
             select.innerHTML = '<option value="">-- 選取員工 --</option>' + filtered.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
         }
 
-        function loadUserDashboard() {
-            const userId = document.getElementById('user-select').value;
+        function loadUserDashboard(id = null) {
+            const userId = id || document.getElementById('user-select').value;
             if (!userId) return;
             const m = members.find(m => m.id === userId);
             document.getElementById('display-user-name').innerText = m.name;
@@ -212,48 +289,59 @@
             list.innerHTML = userRecords.map(r => `
                 <div class="card p-6 flex justify-between items-center ${r.type === 'OT' ? 'record-card-ot' : 'record-card-taken'}">
                     <div>
-                        <div class="text-xs font-bold text-slate-400">${r.date} (${r.startTime} - ${r.endTime})</div>
+                        <div class="text-xs font-bold text-slate-400">${r.date} (${r.startTime || '--:--'} - ${r.endTime || '--:--'})</div>
                         <div class="font-black text-slate-800">${r.note || '無備註'}</div>
-                        <div class="text-[10px] text-slate-400">核實: ${r.recorder}</div>
+                        <div class="text-[10px] text-slate-400">核實: ${r.recorder} (${r.recorderRank || 'N/A'})</div>
                     </div>
                     <div class="text-2xl font-black ${r.type === 'OT' ? 'text-blue-600' : 'text-emerald-600'}">${r.type === 'OT' ? '+' : '-'}${r.minutes}m</div>
                 </div>
             `).join('');
         }
 
+        function addMember() {
+            const name = document.getElementById('new-member-name').value.trim();
+            if (!name) return showToast('請輸入姓名');
+            members.push({ id: Date.now().toString(), name, role: document.getElementById('new-member-role').value });
+            document.getElementById('new-member-name').value = '';
+            updateAllUI();
+            showToast('👤 註冊成功');
+        }
+
         function updateAllUI() {
+            ['WM_ANC', 'APN', 'RN', 'PCA', 'EA'].forEach(role => {
+                const group = members.filter(m => m.role === role);
+                const listEl = document.getElementById(`list-${role.toLowerCase()}`);
+                let sum = 0;
+                listEl.innerHTML = group.map(m => {
+                    const b = records.filter(r=>r.userId===m.id).reduce((s,r)=>s+(r.type==='OT'?r.minutes:-r.minutes),0);
+                    sum += b;
+                    return `<div class="flex justify-between items-center p-3 rounded-xl bg-white border border-slate-100"><span class="font-bold text-sm text-slate-700">${m.name}</span><span class="font-black text-xs ${b >= 0 ? 'text-blue-600' : 'text-red-500'}">${b}m</span></div>`;
+                }).join('');
+                document.getElementById(`group-ot-${role.toLowerCase()}`).innerText = sum + 'm';
+            });
             localStorage.setItem('ot_members', JSON.stringify(members));
             localStorage.setItem('ot_records', JSON.stringify(records));
         }
 
         function toggleRecordForm() {
             document.getElementById('record-form').classList.toggle('hidden');
-            // 重置時間
             document.getElementById('start-time').value = "";
             document.getElementById('end-time').value = "";
+            document.getElementById('recorder-name').value = "";
             calculateMinutes();
         }
 
-        function showToast(m) {
-            const t = document.getElementById('toast');
-            t.innerText = m;
-            t.classList.remove('translate-y-32', 'opacity-0');
-            setTimeout(() => t.classList.add('translate-y-32', 'opacity-0'), 3000);
-        }
-
-        function handleSettingsClick() {
-            const pwd = prompt("請輸入管理密碼:");
-            if(pwd === "8888") switchTab('settings');
-            else alert("密碼錯誤");
-        }
+        function clearSearch() { document.getElementById('main-filter-role').value = ''; filterEmployeeList(); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function showToast(m) { const t = document.getElementById('toast'); t.innerText = m; t.classList.remove('translate-y-32', 'opacity-0'); setTimeout(() => t.classList.add('translate-y-32', 'opacity-0'), 3000); }
 
         async function syncWithCloud() {
-            if(!cloudUrl) return;
+            if(!cloudUrl) return showToast('❌ 請先設定雲端網址');
             const icon = document.getElementById('sync-icon');
             icon.classList.add('spin');
             try {
                 await fetch(cloudUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({members, records}) });
-                showToast('☁️ 雲端同步成功');
+                showToast('☁️ 雲端同步完成');
             } catch(e) { showToast('❌ 同步失敗'); }
             icon.classList.remove('spin');
         }
@@ -262,6 +350,15 @@
             cloudUrl = document.getElementById('cloud-api-url').value.trim();
             localStorage.setItem('ot_cloud_url', cloudUrl);
             showToast('✅ 設定已儲存');
+        }
+
+        function exportToExcel() {
+            let csv = "\uFEFF姓名,組別,結餘(分鐘)\n";
+            members.forEach(m => {
+                const b = records.filter(r=>r.userId===m.id).reduce((s,r)=>s+(r.type==='OT'?r.minutes:-r.minutes),0);
+                csv += `"${m.name}","${m.role}",${b}\n`;
+            });
+            const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); link.download = `Report.csv`; link.click();
         }
     </script>
 </body>
