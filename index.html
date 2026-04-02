@@ -34,6 +34,7 @@
         .overlay { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); }
         
         .btn-delete { @apply p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all; }
+        .btn-delete-staff { @apply p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100; }
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
@@ -238,7 +239,6 @@
             if(cloudUrl) syncWithCloud();
         }
 
-        // 新增：刪除單筆紀錄
         function deleteRecord(recordId) {
             if (!confirm('確定要永久刪除此筆紀錄嗎？這將無法撤銷。')) return;
             
@@ -251,6 +251,31 @@
                 showToast('🗑️ 紀錄已刪除');
                 if(cloudUrl) syncWithCloud();
             }
+        }
+
+        // 新增：刪除人員功能
+        function deleteMember(memberId, event) {
+            event.stopPropagation(); // 防止點擊刪除按鈕時觸發跳轉
+            const member = members.find(m => m.id === memberId);
+            if (!confirm(`確定要刪除員工「${member.name}」嗎？\n這將同時刪除該員的所有補鐘紀錄！`)) return;
+
+            // 1. 移除該人員相關紀錄
+            records = records.filter(r => r.userId !== memberId);
+            // 2. 移除人員本人
+            members = members.filter(m => m.id !== memberId);
+
+            // 3. 如果當前主頁顯示的是該人員，則隱藏 Dashboard
+            const currentSelected = document.getElementById('user-select').value;
+            if (currentSelected === memberId) {
+                document.getElementById('employee-dashboard').classList.add('hidden');
+                document.getElementById('main-empty-state').classList.remove('hidden');
+                document.getElementById('user-select').value = "";
+            }
+
+            updateAllUI();
+            filterEmployeeList();
+            showToast(`🗑️ 已刪除員工 ${member.name}`);
+            if(cloudUrl) syncWithCloud();
         }
 
         function switchTab(tab) {
@@ -288,6 +313,7 @@
             const userId = id || document.getElementById('user-select').value;
             if (!userId) return;
             const m = members.find(m => m.id === userId);
+            if (!m) return; // 以防人員已被刪除但仍有殘留觸發
             document.getElementById('display-user-name').innerText = m.name;
             document.getElementById('user-rank-dot').style.backgroundColor = rankColors[m.role];
             document.getElementById('employee-dashboard').classList.remove('hidden');
@@ -362,10 +388,16 @@
                     const highlightClass = isMax ? 'text-max-highlight' : '';
 
                     return `
-                        <div onclick="jumpToUserRecord('${m.id}', '${role}')" 
-                             class="flex justify-between items-center p-3 rounded-xl border border-slate-100 bg-white cursor-pointer hover:border-blue-300 hover:shadow-sm transition-all group">
-                            <span class="font-bold text-sm text-slate-700 ${highlightClass} group-hover:text-blue-600">${m.name}</span>
-                            <span class="font-black text-xs ${isMax ? 'text-max-highlight' : (m.balance >= 0 ? 'text-blue-600' : 'text-red-500')}">${m.balance}m</span>
+                        <div class="flex justify-between items-center p-3 rounded-xl border border-slate-100 bg-white cursor-pointer hover:border-blue-300 hover:shadow-sm transition-all group">
+                            <div onclick="jumpToUserRecord('${m.id}', '${role}')" class="flex-1 flex justify-between items-center mr-2">
+                                <span class="font-bold text-sm text-slate-700 ${highlightClass} group-hover:text-blue-600">${m.name}</span>
+                                <span class="font-black text-xs ${isMax ? 'text-max-highlight' : (m.balance >= 0 ? 'text-blue-600' : 'text-red-500')}">${m.balance}m</span>
+                            </div>
+                            <button onclick="deleteMember('${m.id}', event)" class="btn-delete-staff" title="刪除員工">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
                         </div>
                     `;
                 }).join('');
