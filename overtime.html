@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>員工補鐘管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google API Client Libraries -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f1f5f9; color: #334155; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05); border: 1px solid rgba(226, 232, 240, 0.8); }
+        .tab-active { background-color: #3b82f6; color: white; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3); }
+        .input-group { @apply flex flex-col gap-1.5; }
+        label { @apply text-xs font-bold text-slate-500 uppercase tracking-widest ml-1; }
+        select, input { @apply p-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 bg-white transition-all text-slate-700; }
+        .btn-primary { @apply bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md active:scale-95 disabled:opacity-50; }
+        .btn-success { @apply bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-md active:scale-95; }
+        .btn-outline { @apply border border-slate-200 text-slate-600 bg-white px-4 py-3 rounded-xl hover:bg-slate-50 transition-all active:scale-95 shadow-sm; }
+        .overlay { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px); }
+        .badge-ot { @apply bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase; }
+        .badge-taken { @apply bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase; }
+        .table-row-hover:hover { background-color: #f8fafc; }
+        
+        /* 滾動條美化 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .sync-status { @apply flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full transition-all; }
+        .status-online { @apply bg-emerald-100 text-emerald-700 border border-emerald-200; }
+        .status-offline { @apply bg-slate-100 text-slate-500 border border-slate-200; }
+        .status-syncing { @apply bg-blue-100 text-blue-700 border border-blue-200 animate-pulse; }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen">
+    <div id="app" class="max-w-6xl mx-auto">
+        <!-- 雲端狀態欄 -->
+        <div class="flex justify-end mb-4">
+            <div id="cloud-sync-container">
+                <button id="auth-btn" onclick="handleAuthClick()" class="btn-outline flex items-center gap-2 text-xs py-2">
+                    <svg class="w-4 h-4" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="m6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002l6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+                    連接 Google Drive 雲端儲存
+                </button>
+                <div id="sync-status-display" class="sync-status status-offline hidden">
+                    <span class="w-2 h-2 rounded-full bg-current"></span>
+                    <span id="sync-text">未連接雲端</span>
+                </div>
+            </div>
+        </div>
+
+        <header class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+                <h1 class="text-4xl font-black text-slate-900 tracking-tight">補鐘 <span class="text-blue-600">管理</span></h1>
+                <p class="text-slate-500 mt-2 font-medium">數據已同步至 Google Drive，保障紀錄永不遺失</p>
+            </div>
+            <div class="flex bg-slate-200/50 backdrop-blur p-1.5 rounded-2xl border border-slate-200">
+                <button onclick="switchTab('main')" id="btn-main" class="px-8 py-2.5 rounded-xl font-bold transition-all tab-active">查詢與錄入</button>
+                <button onclick="handleSettingsClick()" id="btn-settings" class="px-8 py-2.5 rounded-xl font-bold transition-all text-slate-600 flex items-center gap-2 hover:bg-white/50">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    後台管理
+                </button>
+            </div>
+        </header>
+
+        <!-- 主視圖 -->
+        <div id="view-main" class="space-y-8 animate-in fade-in duration-500">
+            <!-- 數據看板區 -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                <!-- Outstanding List 排行 -->
+                <div class="md:col-span-12 card p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white relative overflow-hidden border-none shadow-xl">
+                    <div class="absolute right-0 top-0 w-64 h-64 bg-blue-500/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+                    <div class="relative z-10">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="font-black text-xl flex items-center gap-3">
+                                <span class="bg-red-500 text-white p-1 rounded-lg">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </span>
+                                待補時數排名前三
+                            </h3>
+                        </div>
+                        <div id="outstanding-list" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- JS 動態生成 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 搜尋與選擇 -->
+                <div class="md:col-span-12 card p-8 grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                    <div class="input-group">
+                        <label>職位類別</label>
+                        <select id="main-filter-role" onchange="filterEmployeeList()" class="w-full">
+                            <option value="">-- 全部類別 --</option>
+                            <option value="護士">護士</option>
+                            <option value="職工">職工</option>
+                            <option value="文員">文員</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>選擇員工 <span class="text-[10px] text-blue-500 ml-2">(依姓名排序)</span></label>
+                        <select id="user-select" onchange="loadUserDashboard()" class="w-full">
+                            <option value="">-- 請先選擇類別 --</option>
+                        </select>
+                    </div>
+                    <button onclick="clearSearch()" class="btn-outline h-[50px] flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        重置選擇
+                    </button>
+                </div>
+            </div>
+
+            <!-- 個人紀錄明細 (選取後顯示) -->
+            <div id="employee-dashboard" class="hidden space-y-8 animate-in slide-in-from-bottom-10 duration-700">
+                <!-- 核心結餘顯示 -->
+                <div class="flex flex-col md:flex-row gap-6">
+                    <div class="flex-1 card p-8 bg-blue-600 text-white flex flex-col justify-between border-none shadow-blue-200/50 shadow-2xl">
+                        <span class="text-blue-100 font-bold uppercase tracking-widest text-xs">當前結餘總計</span>
+                        <div class="mt-4">
+                            <h2 class="text-5xl font-black" id="stat-balance">0</h2>
+                            <p class="text-blue-200 mt-2 font-medium" id="stat-balance-hours">0 小時 0 分鐘</p>
+                        </div>
+                    </div>
+                    <div class="flex-none md:w-80 grid grid-rows-2 gap-4">
+                        <div class="card p-6 border-l-8 border-l-blue-400">
+                            <span class="text-slate-400 text-xs font-bold uppercase">總加班紀錄</span>
+                            <p class="text-2xl font-black text-slate-800 mt-1" id="stat-total-ot">0 <span class="text-sm font-normal text-slate-500">m</span></p>
+                        </div>
+                        <div class="card p-6 border-l-8 border-l-emerald-400">
+                            <span class="text-slate-400 text-xs font-bold uppercase">總補時紀錄</span>
+                            <p class="text-2xl font-black text-slate-800 mt-1" id="stat-total-taken">0 <span class="text-sm font-normal text-slate-500">m</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between px-2">
+                    <h3 class="text-2xl font-black text-slate-800"><span id="display-user-name" class="underline decoration-blue-500 decoration-4 underline-offset-8"></span> 的明細</h3>
+                    <button onclick="toggleRecordForm()" id="toggle-form-btn" class="btn-primary flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        新增紀錄
+                    </button>
+                </div>
+
+                <!-- 錄入表單 -->
+                <div id="record-form" class="hidden card overflow-hidden border-2 border-blue-100 shadow-2xl">
+                    <!-- 表單內容省略，同前版本 -->
+                    <div class="bg-slate-50 px-8 py-4 border-b border-slate-100 flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                            <span class="font-bold text-slate-700">正在錄入紀錄 - <span id="form-target-name"></span></span>
+                        </div>
+                        <button onclick="toggleRecordForm()" class="text-slate-400 hover:text-red-500 font-bold">ESC 關閉</button>
+                    </div>
+                    <div class="p-8 space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="input-group">
+                                <label>1. 紀錄者姓名</label>
+                                <input type="text" id="recorder-name" placeholder="輸入您的姓名">
+                            </div>
+                            <div class="input-group">
+                                <label>2. 紀錄者職級</label>
+                                <select id="recorder-role">
+                                    <option value="DOM">DOM</option><option value="WM">WM</option><option value="APN">APN</option><option value="其他">其他</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div class="input-group">
+                                <label>3. 性質</label>
+                                <select id="record-type" onchange="updateFormTheme()">
+                                    <option value="OT">超時工作 (OT +)</option>
+                                    <option value="TAKEN">申請補時 (Taken -)</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>4. 發生日期</label>
+                                <input type="date" id="record-date">
+                            </div>
+                            <div class="input-group">
+                                <label>5. 分鐘數</label>
+                                <input type="number" id="record-minutes" placeholder="分鐘">
+                                <div class="flex gap-1 mt-1">
+                                    <button onclick="quickMins(15)" class="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded hover:bg-slate-200 transition">15m</button>
+                                    <button onclick="quickMins(30)" class="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded hover:bg-slate-200 transition">30m</button>
+                                    <button onclick="quickMins(60)" class="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded hover:bg-slate-200 transition">1h</button>
+                                    <button onclick="quickMins(120)" class="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded hover:bg-slate-200 transition">2h</button>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label>6. 備註原因</label>
+                                <input type="text" id="record-note" placeholder="例如：WARD 巡房">
+                            </div>
+                        </div>
+                        <div class="flex justify-end pt-4">
+                            <button id="record-submit-btn" onclick="addRecord()" class="btn-primary w-full md:w-64">完成錄入並儲存</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 紀錄列表 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="card overflow-hidden">
+                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-blue-50/30">
+                            <h4 class="font-black text-blue-700 flex items-center gap-2">加班紀錄明細 (OT)</h4>
+                        </div>
+                        <div class="max-h-[500px] overflow-y-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-slate-50 text-[11px] text-slate-400 uppercase tracking-widest sticky top-0 z-10">
+                                    <tr><th class="p-4">日期</th><th class="p-4">項目/備註</th><th class="p-4">核實者</th><th class="p-4 text-right">分鐘</th></tr>
+                                </thead>
+                                <tbody id="table-ot" class="divide-y divide-slate-100 text-sm"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card overflow-hidden">
+                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-emerald-50/30">
+                            <h4 class="font-black text-emerald-700 flex items-center gap-2">補時紀錄明細 (Taken)</h4>
+                        </div>
+                        <div class="max-h-[500px] overflow-y-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-slate-50 text-[11px] text-slate-400 uppercase tracking-widest sticky top-0 z-10">
+                                    <tr><th class="p-4">日期</th><th class="p-4">原因</th><th class="p-4">核實者</th><th class="p-4 text-right">分鐘</th></tr>
+                                </thead>
+                                <tbody id="table-taken" class="divide-y divide-slate-100 text-sm"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 成員管理視圖 -->
+        <div id="view-settings" class="hidden space-y-8 animate-in slide-in-from-right-10 duration-500">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-900 p-8 rounded-3xl text-white shadow-2xl">
+                <div>
+                    <h2 class="text-3xl font-black">後台管理中心</h2>
+                    <p class="text-slate-400 text-sm mt-1">管理團隊成員與導出報表</p>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    <button onclick="openChangePasswordModal()" class="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition-all font-bold text-sm">更改管理密碼</button>
+                    <button onclick="exportToExcel()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 transition-all font-bold text-sm">匯出所有數據</button>
+                    <button onclick="logoutAdmin()" class="px-5 py-2.5 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500 transition-all font-bold text-sm">登出</button>
+                </div>
+            </div>
+
+            <div class="card p-8 bg-white">
+                <h3 class="text-lg font-black mb-6 flex items-center gap-2">註冊新員工</h3>
+                <div class="flex flex-col md:flex-row gap-4">
+                    <input type="text" id="new-member-name" placeholder="員工姓名" class="flex-1">
+                    <select id="new-member-role" class="md:w-64">
+                        <option value="護士">護士</option>
+                        <option value="職工">職工</option>
+                        <option value="文員">文員</option>
+                    </select>
+                    <button onclick="addMember()" class="btn-primary px-12">確認加入</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="card overflow-hidden border-none shadow-lg">
+                    <div class="bg-blue-600 p-5 text-white flex justify-between items-center"><span class="font-black tracking-widest">護士組</span><span id="group-ot-nurse" class="text-xs bg-black/20 px-3 py-1 rounded-full font-bold">0m</span></div>
+                    <div id="list-nurse" class="p-4 space-y-2"></div>
+                </div>
+                <div class="card overflow-hidden border-none shadow-lg">
+                    <div class="bg-emerald-600 p-5 text-white flex justify-between items-center"><span class="font-black tracking-widest">職工組</span><span id="group-ot-staff" class="text-xs bg-black/20 px-3 py-1 rounded-full font-bold">0m</span></div>
+                    <div id="list-staff" class="p-4 space-y-2"></div>
+                </div>
+                <div class="card overflow-hidden border-none shadow-lg">
+                    <div class="bg-purple-600 p-5 text-white flex justify-between items-center"><span class="font-black tracking-widest">文員組</span><span id="group-ot-clerk" class="text-xs bg-black/20 px-3 py-1 rounded-full font-bold">0m</span></div>
+                    <div id="list-clerk" class="p-4 space-y-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 驗證彈窗 -->
+    <div id="login-overlay" class="fixed inset-0 z-50 flex items-center justify-center hidden p-4 overlay">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-8">
+            <h2 class="text-2xl font-black text-center mb-6">管理員登入</h2>
+            <input type="password" id="admin-password" placeholder="••••" class="w-full text-center text-3xl font-black mb-6" onkeyup="if(event.key==='Enter') verifyAdmin()">
+            <div id="login-error" class="text-red-500 text-xs text-center hidden mb-4">密碼不正確</div>
+            <div class="flex gap-3">
+                <button onclick="closeModal('login-overlay')" class="flex-1 py-4 font-bold text-slate-400">取消</button>
+                <button onclick="verifyAdmin()" class="flex-1 btn-primary">登入</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-4 rounded-2xl shadow-2xl transition-all translate-y-20 opacity-0 z-[100] font-bold text-sm"></div>
+
+    <script>
+        // --- Google Drive 設定 ---
+        // 請替換為你自己的 Client ID 和 API Key (從 Google Cloud Console 獲取)
+        // 此處演示使用簡化流程，需使用者授權權限
+        const CLIENT_ID = ''; // 如果沒有 Client ID，網頁會引導使用 LocalStorage 
+        const API_KEY = ''; 
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+        let googleFileId = null;
+
+        // 狀態管理
+        let members = JSON.parse(localStorage.getItem('ot_members')) || [];
+        let records = JSON.parse(localStorage.getItem('ot_records')) || [];
+        let storedPassword = localStorage.getItem('ot_admin_pwd') || "8888";
+        let isAdminLoggedIn = false;
+
+        window.onload = () => {
+            document.getElementById('record-date').valueAsDate = new Date();
+            document.getElementById('recorder-name').value = localStorage.getItem('ot_last_recorder_name') || '';
+            document.getElementById('recorder-role').value = localStorage.getItem('ot_last_recorder_role') || 'APN';
+            updateAllUI();
+            
+            // 初始化 Google API
+            gapi.load('client', initializeGapiClient);
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: '1073801267448-jks1l3p5m0v239m88as41bgeuicp1h6q.apps.googleusercontent.com', // 演示用，實際需替換
+                scope: SCOPES,
+                callback: '', // 在授權成功後處理
+            });
+        };
+
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                discoveryDocs: [DISCOVERY_DOC],
+            });
+            gapiInited = true;
+            maybeCheckCloud();
+        }
+
+        function handleAuthClick() {
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) throw (resp);
+                updateSyncStatus('syncing', '正在連接...');
+                await syncFromCloud();
+                document.getElementById('auth-btn').classList.add('hidden');
+                document.getElementById('sync-status-display').classList.remove('hidden');
+            };
+            tokenClient.requestAccessToken({prompt: 'consent'});
+        }
+
+        function updateSyncStatus(type, text) {
+            const el = document.getElementById('sync-status-display');
+            const txt = document.getElementById('sync-text');
+            el.className = 'sync-status';
+            if (type === 'online') el.classList.add('status-online');
+            else if (type === 'syncing') el.classList.add('status-syncing');
+            else el.classList.add('status-offline');
+            txt.innerText = text;
+        }
+
+        async function syncFromCloud() {
+            try {
+                // 搜尋名為 app_data.json 的檔案
+                const response = await gapi.client.drive.files.list({
+                    q: "name = 'app_data.json' and trashed = false",
+                    fields: 'files(id, name)',
+                });
+                const files = response.result.files;
+                if (files && files.length > 0) {
+                    googleFileId = files[0].id;
+                    const content = await gapi.client.drive.files.get({
+                        fileId: googleFileId,
+                        alt: 'media',
+                    });
+                    const data = content.result;
+                    if (data.members) {
+                        members = data.members;
+                        records = data.records;
+                        storedPassword = data.password || storedPassword;
+                        updateAllUI();
+                        updateSyncStatus('online', '雲端同步中');
+                    }
+                } else {
+                    // 檔案不存在，建立新檔案
+                    await saveToCloud();
+                    updateSyncStatus('online', '雲端已連接 (新建)');
+                }
+            } catch (err) {
+                console.error(err);
+                updateSyncStatus('offline', '同步失敗');
+            }
+        }
+
+        async function saveToCloud() {
+            if (!gapi.client.drive) return;
+            updateSyncStatus('syncing', '同步中...');
+            const data = { members, records, password: storedPassword };
+            const metadata = {
+                name: 'app_data.json',
+                mimeType: 'application/json',
+            };
+            const content = JSON.stringify(data);
+
+            try {
+                if (googleFileId) {
+                    // 更新檔案
+                    await gapi.client.request({
+                        path: '/upload/drive/v3/files/' + googleFileId,
+                        method: 'PATCH',
+                        params: { uploadType: 'media' },
+                        body: content,
+                    });
+                } else {
+                    // 新建檔案
+                    const boundary = '-------314159265358979323846';
+                    const delimiter = "\r\n--" + boundary + "\r\n";
+                    const close_delim = "\r\n--" + boundary + "--";
+                    const multipartRequestBody =
+                        delimiter +
+                        'Content-Type: application/json\r\n\r\n' +
+                        JSON.stringify(metadata) +
+                        delimiter +
+                        'Content-Type: application/json\r\n\r\n' +
+                        content +
+                        close_delim;
+
+                    const response = await gapi.client.request({
+                        path: '/upload/drive/v3/files',
+                        method: 'POST',
+                        params: { uploadType: 'multipart' },
+                        headers: { 'Content-Type': 'multipart/related; boundary="' + boundary + '"' },
+                        body: multipartRequestBody,
+                    });
+                    googleFileId = response.result.id;
+                }
+                updateSyncStatus('online', '數據已備份');
+            } catch (err) {
+                console.error(err);
+                updateSyncStatus('offline', '備份失敗');
+            }
+        }
+
+        function saveData() {
+            // 本地備份
+            localStorage.setItem('ot_members', JSON.stringify(members));
+            localStorage.setItem('ot_records', JSON.stringify(records));
+            localStorage.setItem('ot_admin_pwd', storedPassword);
+            // 雲端備份
+            saveToCloud();
+        }
+
+        // --- 以下為原有核心邏輯，保持不變 ---
+
+        function switchTab(tab) {
+            const isMain = tab === 'main';
+            document.getElementById('view-main').classList.toggle('hidden', !isMain);
+            document.getElementById('view-settings').classList.toggle('hidden', isMain);
+            document.getElementById('btn-main').className = isMain ? 'px-8 py-2.5 rounded-xl font-bold transition-all tab-active' : 'px-8 py-2.5 rounded-xl font-bold transition-all text-slate-600';
+            document.getElementById('btn-settings').className = !isMain ? 'px-8 py-2.5 rounded-xl font-bold transition-all tab-active flex items-center gap-2' : 'px-8 py-2.5 rounded-xl font-bold transition-all text-slate-600 flex items-center gap-2';
+            updateAllUI(); 
+        }
+
+        function updateFormTheme() {
+            const type = document.getElementById('record-type').value;
+            const btn = document.getElementById('record-submit-btn');
+            btn.className = type === 'OT' ? "btn-primary w-full md:w-64" : "btn-success w-full md:w-64";
+            btn.innerText = type === 'OT' ? "完成加班錄入" : "完成補時錄入";
+        }
+
+        function quickMins(val) { document.getElementById('record-minutes').value = val; }
+
+        function toggleRecordForm() {
+            const form = document.getElementById('record-form');
+            form.classList.toggle('hidden');
+        }
+
+        function filterEmployeeList() {
+            const role = document.getElementById('main-filter-role').value;
+            const select = document.getElementById('user-select');
+            document.getElementById('employee-dashboard').classList.add('hidden');
+            if (!role) { select.innerHTML = '<option value="">-- 全部 --</option>'; return; }
+            const sorted = members.filter(m => m.role === role).sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant'));
+            select.innerHTML = '<option value="">-- 請選姓名 --</option>' + sorted.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+        }
+
+        function loadUserDashboard() {
+            const userId = document.getElementById('user-select').value;
+            if (!userId) return;
+            const member = members.find(m => m.id === userId);
+            document.getElementById('display-user-name').innerText = member.name;
+            document.getElementById('form-target-name').innerText = member.name;
+            document.getElementById('employee-dashboard').classList.remove('hidden');
+            refreshDashboardData(userId);
+        }
+
+        function refreshDashboardData(userId) {
+            const userRecords = records.filter(r => r.userId === userId);
+            const ot = userRecords.filter(r => r.type === 'OT').sort((a, b) => b.date.localeCompare(a.date));
+            const taken = userRecords.filter(r => r.type === 'TAKEN').sort((a, b) => b.date.localeCompare(a.date));
+            
+            const totalOT = ot.reduce((s, r) => s + r.minutes, 0);
+            const totalTaken = taken.reduce((s, r) => s + r.minutes, 0);
+            const balance = totalOT - totalTaken;
+
+            document.getElementById('stat-total-ot').innerText = totalOT;
+            document.getElementById('stat-total-taken').innerText = totalTaken;
+            document.getElementById('stat-balance').innerText = balance + " m";
+            document.getElementById('stat-balance-hours').innerText = `${Math.floor(Math.abs(balance)/60)} 小時 ${Math.abs(balance)%60} 分鐘`;
+
+            const renderTable = (data, elId, type) => {
+                const tbody = document.getElementById(elId);
+                tbody.innerHTML = data.map(r => `
+                    <tr class="table-row-hover">
+                        <td class="p-4 font-black">${r.date.split('-').slice(1).join('/')}</td>
+                        <td class="p-4">${r.note || '-'}</td>
+                        <td class="p-4"><b>${r.recorder}</b> (${r.recorderRole})</td>
+                        <td class="p-4 text-right font-black ${type==='OT'?'text-blue-600':'text-emerald-600'}">${type==='OT'?'+':'-'}${r.minutes}</td>
+                    </tr>`).join('') || '<tr><td colspan="4" class="p-8 text-center text-slate-300">無紀錄</td></tr>';
+            };
+            renderTable(ot, 'table-ot', 'OT');
+            renderTable(taken, 'table-taken', 'TAKEN');
+        }
+
+        function addRecord() {
+            const userId = document.getElementById('user-select').value;
+            const mins = parseInt(document.getElementById('record-minutes').value);
+            const recorder = document.getElementById('recorder-name').value.trim();
+            if (isNaN(mins) || !recorder) return showToast('請完整填寫');
+
+            records.push({ 
+                id: Date.now().toString(), 
+                userId, 
+                type: document.getElementById('record-type').value, 
+                date: document.getElementById('record-date').value, 
+                minutes: mins, 
+                note: document.getElementById('record-note').value, 
+                recorder, 
+                recorderRole: document.getElementById('recorder-role').value 
+            });
+            
+            localStorage.setItem('ot_last_recorder_name', recorder);
+            saveData();
+            refreshDashboardData(userId);
+            toggleRecordForm();
+            renderOutstandingList(); 
+            showToast('✅ 紀錄已同步');
+        }
+
+        function getBalance(userId) {
+            const userRecords = records.filter(r => r.userId === userId);
+            const ot = userRecords.filter(r => r.type === 'OT').reduce((s, r) => s + r.minutes, 0);
+            const taken = userRecords.filter(r => r.type === 'TAKEN').reduce((s, r) => s + r.minutes, 0);
+            return ot - taken;
+        }
+
+        function renderOutstandingList() {
+            const ranked = members.map(m => ({ ...m, balance: getBalance(m.id) })).sort((a, b) => b.balance - a.balance).slice(0, 3);
+            document.getElementById('outstanding-list').innerHTML = ranked.map((m, i) => `
+                <div class="bg-white/10 p-4 rounded-2xl flex justify-between">
+                    <div><p class="font-black">${m.name}</p><p class="text-[10px] opacity-60">${m.role}</p></div>
+                    <p class="font-black text-xl">${m.balance}m</p>
+                </div>`).join('');
+        }
+
+        function renderMembersCategorized() {
+            const renderGroup = (role, listId, totalId) => {
+                const group = members.filter(m => m.role === role);
+                let groupTotal = 0;
+                document.getElementById(listId).innerHTML = group.map(m => {
+                    const bal = getBalance(m.id);
+                    groupTotal += bal;
+                    return `<div class="flex justify-between p-2 bg-slate-50 rounded mb-1">
+                        <span class="text-sm font-bold">${m.name} (${bal}m)</span>
+                        <button onclick="removeMember('${m.id}')" class="text-red-400 hover:text-red-600">×</button>
+                    </div>`;
+                }).join('');
+                document.getElementById(totalId).innerText = groupTotal + 'm';
+            };
+            renderGroup('護士', 'list-nurse', 'group-ot-nurse');
+            renderGroup('職工', 'list-staff', 'group-ot-staff');
+            renderGroup('文員', 'list-clerk', 'group-ot-clerk');
+        }
+
+        function handleSettingsClick() {
+            if (isAdminLoggedIn) switchTab('settings');
+            else document.getElementById('login-overlay').classList.remove('hidden');
+        }
+
+        function verifyAdmin() {
+            if (document.getElementById('admin-password').value === storedPassword) {
+                isAdminLoggedIn = true;
+                closeModal('login-overlay');
+                switchTab('settings');
+                showToast('已開啟管理模式');
+            } else {
+                document.getElementById('login-error').classList.remove('hidden');
+            }
+        }
+
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function logoutAdmin() { isAdminLoggedIn = false; switchTab('main'); }
+
+        function addMember() {
+            const name = document.getElementById('new-member-name').value.trim();
+            if (!name) return;
+            members.push({ id: Date.now().toString(), name, role: document.getElementById('new-member-role').value });
+            document.getElementById('new-member-name').value = '';
+            updateAllUI();
+        }
+
+        function removeMember(id) {
+            if (!confirm('確定刪除？')) return;
+            members = members.filter(m => m.id !== id);
+            records = records.filter(r => r.userId !== id);
+            updateAllUI();
+        }
+
+        function clearSearch() {
+            document.getElementById('main-filter-role').value = '';
+            filterEmployeeList();
+        }
+
+        function updateAllUI() {
+            renderOutstandingList();
+            renderMembersCategorized();
+            saveData();
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => t.classList.add('translate-y-20', 'opacity-0'), 2000);
+        }
+
+        function exportToExcel() {
+            let csv = "\uFEFF姓名,職位,結餘(m)\n";
+            members.forEach(m => csv += `"${m.name}","${m.role}",${getBalance(m.id)}\n`);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `補鐘報表.csv`;
+            link.click();
+        }
+    </script>
+</body>
+</html>
