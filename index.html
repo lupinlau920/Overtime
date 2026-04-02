@@ -25,6 +25,10 @@
         .record-card-ot { border-left: 8px solid #2563eb; }
         .record-card-taken { border-left: 8px solid #10b981; }
         
+        /* 最高時數突顯樣式 */
+        .highlight-max { @apply bg-red-600 border-red-700 text-white !important; }
+        .highlight-max span { @apply text-white !important; }
+
         label { color: #64748b; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: block; }
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -70,7 +74,7 @@
                     <button onclick="toggleRecordForm()" class="btn-primary py-3.5 px-8 text-sm">新增紀錄</button>
                 </div>
 
-                <!-- 紀錄表單 (含自動時間計算與核實人職級) -->
+                <!-- 紀錄表單 -->
                 <div id="record-form" class="hidden card overflow-hidden border-2 border-blue-600 shadow-2xl animate-in zoom-in-95">
                     <div class="p-8 space-y-6">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -144,6 +148,7 @@
                 </div>
             </div>
 
+            <!-- 組別列表 -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                 <div class="card overflow-hidden rank-wm_anc-theme"><div class="rank-card-header"><span>WM/ANC</span><span id="group-ot-wm_anc">0m</span></div><div id="list-wm_anc" class="p-4 space-y-2 bg-[var(--rank-bg)] min-h-[100px]"></div></div>
                 <div class="card overflow-hidden rank-apn-theme"><div class="rank-card-header"><span>APN</span><span id="group-ot-apn">0m</span></div><div id="list-apn" class="p-4 space-y-2 bg-[var(--rank-bg)] min-h-[100px]"></div></div>
@@ -309,16 +314,37 @@
 
         function updateAllUI() {
             ['WM_ANC', 'APN', 'RN', 'PCA', 'EA'].forEach(role => {
-                const group = members.filter(m => m.role === role);
+                const groupMembers = members.filter(m => m.role === role);
+                
+                // 預先計算所有組員時數，找出最大值
+                const memberBalances = groupMembers.map(m => {
+                    const balance = records.filter(r => r.userId === m.id)
+                        .reduce((s, r) => s + (r.type === 'OT' ? r.minutes : -r.minutes), 0);
+                    return { ...m, balance };
+                });
+
+                const maxBalance = memberBalances.length > 0 ? Math.max(...memberBalances.map(m => m.balance)) : 0;
+
                 const listEl = document.getElementById(`list-${role.toLowerCase()}`);
-                let sum = 0;
-                listEl.innerHTML = group.map(m => {
-                    const b = records.filter(r=>r.userId===m.id).reduce((s,r)=>s+(r.type==='OT'?r.minutes:-r.minutes),0);
-                    sum += b;
-                    return `<div class="flex justify-between items-center p-3 rounded-xl bg-white border border-slate-100"><span class="font-bold text-sm text-slate-700">${m.name}</span><span class="font-black text-xs ${b >= 0 ? 'text-blue-600' : 'text-red-500'}">${b}m</span></div>`;
+                let groupSum = 0;
+
+                listEl.innerHTML = memberBalances.map(m => {
+                    groupSum += m.balance;
+                    // 如果時數等於最高值且大於0，則突顯
+                    const isMax = m.balance === maxBalance && maxBalance > 0;
+                    const highlightClass = isMax ? 'highlight-max' : 'bg-white';
+
+                    return `
+                        <div class="flex justify-between items-center p-3 rounded-xl border border-slate-100 transition-colors ${highlightClass}">
+                            <span class="font-bold text-sm ${isMax ? 'text-white' : 'text-slate-700'}">${m.name}</span>
+                            <span class="font-black text-xs ${isMax ? 'text-white' : (m.balance >= 0 ? 'text-blue-600' : 'text-red-500')}">${m.balance}m</span>
+                        </div>
+                    `;
                 }).join('');
-                document.getElementById(`group-ot-${role.toLowerCase()}`).innerText = sum + 'm';
+
+                document.getElementById(`group-ot-${role.toLowerCase()}`).innerText = groupSum + 'm';
             });
+
             localStorage.setItem('ot_members', JSON.stringify(members));
             localStorage.setItem('ot_records', JSON.stringify(records));
         }
