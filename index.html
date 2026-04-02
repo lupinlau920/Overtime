@@ -26,14 +26,15 @@
         .input-enhanced:focus { @apply border-blue-600 ring-4 ring-blue-500/10; }
 
         /* 強化的組別色彩系統 */
-        .rank-apn-theme { --rank-color: #2563eb; --rank-bg: #eff6ff; } /* 鮮藍 */
-        .rank-rn-theme { --rank-color: #8b5cf6; --rank-bg: #f5f3ff; }  /* 紫色 */
-        .rank-pca-theme { --rank-color: #059669; --rank-bg: #ecfdf5; } /* 翠綠 */
-        .rank-ea-theme { --rank-color: #d946ef; --rank-bg: #fdf4ff; }  /* 粉紫 */
+        .rank-wm_anc-theme { --rank-color: #f59e0b; --rank-bg: #fffbeb; --text-on-rank: #78350f; } /* 琥珀黃 (管理層) */
+        .rank-apn-theme { --rank-color: #2563eb; --rank-bg: #eff6ff; --text-on-rank: #ffffff; } /* 鮮藍 */
+        .rank-rn-theme { --rank-color: #8b5cf6; --rank-bg: #f5f3ff; --text-on-rank: #ffffff; }  /* 紫色 */
+        .rank-pca-theme { --rank-color: #059669; --rank-bg: #ecfdf5; --text-on-rank: #ffffff; } /* 翠綠 */
+        .rank-ea-theme { --rank-color: #d946ef; --rank-bg: #fdf4ff; --text-on-rank: #ffffff; }  /* 粉紫 */
 
         .rank-card-header {
             background-color: var(--rank-color);
-            color: white;
+            color: var(--text-on-rank);
             padding: 1rem 1.5rem;
             font-weight: 900;
             font-size: 0.875rem;
@@ -54,6 +55,9 @@
         .record-card-taken { border-left: 8px solid #10b981; background-color: #ffffff; }
 
         label { color: #64748b !important; font-weight: 800 !important; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        
+        /* 選單圓點顏色模擬 */
+        .color-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
@@ -85,10 +89,11 @@
                     <label>1. 選擇組別 (Rank)</label>
                     <select id="main-filter-role" onchange="filterEmployeeList()" class="input-enhanced w-full">
                         <option value="">-- 全部組別 --</option>
-                        <option value="APN">🔵 APN</option>
-                        <option value="RN">🟣 RN</option>
-                        <option value="PCA">🟢 PCA</option>
-                        <option value="EA">💗 EA</option>
+                        <option value="WM_ANC" style="color: #f59e0b;">● WM/ANC</option>
+                        <option value="APN" style="color: #2563eb;">● APN</option>
+                        <option value="RN" style="color: #8b5cf6;">● RN</option>
+                        <option value="PCA" style="color: #059669;">● PCA</option>
+                        <option value="EA" style="color: #d946ef;">● EA</option>
                     </select>
                 </div>
                 <div class="flex flex-col gap-2">
@@ -144,7 +149,7 @@
                             <div class="flex flex-col gap-2">
                                 <label>核實人 Rank</label>
                                 <select id="recorder-rank" class="p-4 border-2 border-slate-200 rounded-2xl font-bold focus:border-blue-600 outline-none">
-                                    <option value="APN">APN</option><option value="ANC">ANC</option><option value="WM">WM</option><option value="DOM">DOM</option>
+                                    <option value="WM">WM</option><option value="ANC">ANC</option><option value="APN">APN</option><option value="DOM">DOM</option>
                                 </select>
                             </div>
                         </div>
@@ -152,8 +157,8 @@
                             <div class="flex flex-col gap-2">
                                 <label>性質</label>
                                 <select id="record-type" class="p-4 border-2 border-slate-200 rounded-2xl font-bold focus:border-blue-600 outline-none bg-slate-50">
-                                    <option value="OT">🔵 超時工作 (OT +)</option>
-                                    <option value="TAKEN">🟢 申請補時 (Taken -)</option>
+                                    <option value="OT">● 超時工作 (OT +)</option>
+                                    <option value="TAKEN">● 申請補時 (Taken -)</option>
                                 </select>
                             </div>
                             <div class="flex flex-col gap-2">
@@ -214,7 +219,7 @@
                     <div class="md:w-64 flex flex-col gap-2">
                         <label>所屬組別</label>
                         <select id="new-member-role" class="p-5 border-2 border-slate-200 rounded-3xl font-bold focus:border-blue-600 outline-none bg-slate-50">
-                            <option value="APN">APN</option><option value="RN">RN</option><option value="PCA">PCA</option><option value="EA">EA</option>
+                            <option value="WM_ANC">WM/ANC</option><option value="APN">APN</option><option value="RN">RN</option><option value="PCA">PCA</option><option value="EA">EA</option>
                         </select>
                     </div>
                     <button onclick="addMember()" class="btn-primary px-16 h-[68px] mt-auto">註冊人員</button>
@@ -222,7 +227,15 @@
             </div>
 
             <!-- 分組卡片展示 -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+                <!-- WM/ANC -->
+                <div class="card overflow-hidden rank-wm_anc-theme rank-card-body">
+                    <div class="rank-card-header">
+                        <span>WM/ANC 組</span>
+                        <span id="group-ot-wm_anc" class="bg-white/20 px-2 py-1 rounded text-[10px]">0m</span>
+                    </div>
+                    <div id="list-wm_anc" class="p-4 space-y-2 min-h-[120px] bg-[var(--rank-bg)]"></div>
+                </div>
                 <!-- APN -->
                 <div class="card overflow-hidden rank-apn-theme rank-card-body">
                     <div class="rank-card-header">
@@ -284,6 +297,7 @@
         let isAdminLoggedIn = false;
 
         const rankColors = { 
+            'WM_ANC': '#f59e0b',
             'APN': '#2563eb', 
             'RN': '#8b5cf6', 
             'PCA': '#059669', 
@@ -305,11 +319,19 @@
         }
 
         function filterEmployeeList() {
-            const role = document.getElementById('main-filter-role').value.replace(/[^A-Z]/g, '');
+            // 提取組別 ID (忽略圓點裝飾符)
+            const rawValue = document.getElementById('main-filter-role').value;
+            const role = rawValue.replace(/[^A-Z_]/g, ''); 
+            
             const select = document.getElementById('user-select');
             document.getElementById('employee-dashboard').classList.add('hidden');
             document.getElementById('main-empty-state').classList.remove('hidden');
-            if (!role) { select.innerHTML = '<option value="">-- 先選取組別 --</option>'; return; }
+            
+            if (!role) { 
+                select.innerHTML = '<option value="">-- 請先選擇組別 --</option>'; 
+                return; 
+            }
+            
             const filtered = members.filter(m => m.role === role).sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant'));
             select.innerHTML = '<option value="">-- 選取員工 --</option>' + filtered.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
         }
@@ -319,11 +341,20 @@
             if (!userId) return;
             const member = members.find(m => m.id === userId);
             if (!member) return;
+            
             if (targetId) { 
-                document.getElementById('main-filter-role').value = member.role === 'APN' ? '🔵 APN' : member.role === 'RN' ? '🟣 RN' : member.role === 'PCA' ? '🟢 PCA' : '💗 EA';
+                const roleMap = {
+                    'WM_ANC': 'WM_ANC',
+                    'APN': 'APN',
+                    'RN': 'RN',
+                    'PCA': 'PCA',
+                    'EA': 'EA'
+                };
+                document.getElementById('main-filter-role').value = roleMap[member.role] || member.role;
                 filterEmployeeList(); 
                 document.getElementById('user-select').value = userId; 
             }
+            
             document.getElementById('display-user-name').innerText = member.name;
             document.getElementById('user-rank-dot').style.backgroundColor = rankColors[member.role];
             document.getElementById('employee-dashboard').classList.remove('hidden');
@@ -391,7 +422,7 @@
         }
 
         function updateAllUI() {
-            const roles = ['APN', 'RN', 'PCA', 'EA'];
+            const roles = ['WM_ANC', 'APN', 'RN', 'PCA', 'EA'];
             roles.forEach(role => {
                 const group = members.filter(m => m.role === role);
                 const listEl = document.getElementById(`list-${role.toLowerCase()}`);
